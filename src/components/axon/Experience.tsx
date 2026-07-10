@@ -210,17 +210,7 @@ function DNAStrand({ visible, dnaRadius, dnaHeight, dnaLoops, particleCount, sca
 // ---------------------------------------------------------
 // Physically Attached DNA Glass Cards
 // ---------------------------------------------------------
-function OrbitingCards({ visible, dnaRadius, dnaHeight, dnaLoops, cardRadius, cardYSpacing, angleOffsetDeg, glassTransmission, glassRoughness }: { 
-  visible: boolean;
-  dnaRadius: number;
-  dnaHeight: number;
-  dnaLoops: number;
-  cardRadius: number;
-  cardYSpacing: number;
-  angleOffsetDeg: number;
-  glassTransmission: number;
-  glassRoughness: number;
-}) {
+function OrbitingCards({ visible, dnaHeight, dnaRadius, dnaLoops, cardYSpacing, scrollProgress, setActiveProject, activeProject, angleOffsetDeg, glassTransmission, glassRoughness }: any) {
   const groupRef = useRef<THREE.Group>(null);
 
   useFrame(() => {
@@ -232,86 +222,193 @@ function OrbitingCards({ visible, dnaRadius, dnaHeight, dnaLoops, cardRadius, ca
 
   return (
     <group ref={groupRef} scale={0.001}>
-      {PROJECTS.map((proj, i) => {
-        // Offset the first card by 7.5 units from the top to create a "visual pause" buffer
-        const yTarget = (dnaHeight / 2 - 7.5) - (i * cardYSpacing); 
-        
-        const t = ((dnaHeight / 2) - yTarget) / dnaHeight;
-        
-        // Alternate cards perfectly to the left and right sides
-        const isLeft = i % 2 !== 0; 
-        const angleOffset = isLeft ? (angleOffsetDeg * Math.PI / 180) : -(angleOffsetDeg * Math.PI / 180); 
-        
-        const baseAngle = -t * Math.PI * 2 * dnaLoops; 
-        const cardAngle = baseAngle + angleOffset;
-        const themeColor = isLeft ? "#00e5ff" : "#ff2a00";
-        
-        // Node sits exactly on the main DNA strand
-        const p1x = Math.cos(baseAngle) * dnaRadius;
-        const p1z = Math.sin(baseAngle) * dnaRadius;
-        
-        // Card is shifted angularly so it orbits into the Left/Right position
-        const p2x = Math.cos(cardAngle) * cardRadius;
-        const p2z = Math.sin(cardAngle) * cardRadius;
-
-        // Force card to face perfectly outward when focused (NEVER MIRRORED)
-        const localRotY = baseAngle - Math.PI / 2;
-        const accentX = isLeft ? 1.9 : -1.9;
-
-        return (
-          <group key={proj.id}>
-            {/* Glowing Attachment Node on DNA */}
-            <mesh position={[p1x, yTarget, p1z]}>
-               <sphereGeometry args={[0.08, 16, 16]} />
-               <meshBasicMaterial color={themeColor} />
-            </mesh>
-
-            {/* The 3D Card Object */}
-            <group 
-              position={[p2x, yTarget, p2z]} 
-              rotation={[0, localRotY, 0]}
-            >
-              {/* Dark Cybernetic UI Glass Backing */}
-              <RoundedBox args={[3.8, 2.8, 0.05]} radius={0.15} smoothness={4}>
-                <meshPhysicalMaterial 
-                  color="#030305"
-                  transmission={glassTransmission}
-                  opacity={1}
-                  metalness={0.5}
-                  roughness={glassRoughness}
-                  ior={1.5}
-                  thickness={1.0}
-                  clearcoat={1}
-                />
-              </RoundedBox>
-
-              {/* Glowing Tech Accent Line */}
-              <mesh position={[accentX, 0, 0.06]}>
-                <planeGeometry args={[0.04, 2.0]} />
-                <meshBasicMaterial color={themeColor} />
-              </mesh>
-
-              {/* 3D Projected HTML Overlay */}
-              <Html transform position={[0, 0, 0.1]} distanceFactor={2} center>
-                <div className={`w-[280px] text-left pointer-events-auto select-none transition-all duration-500 hover:scale-[1.03] group ${isLeft ? 'pr-4' : 'pl-4'}`}>
-                  <p className="text-[10px] text-[#00e5ff] mb-2 uppercase tracking-[0.2em] font-medium drop-shadow-[0_0_8px_rgba(0,229,255,0.8)]">
-                    {proj.tech}
-                  </p>
-                  <h3 className="text-3xl font-light text-white mb-3 tracking-wide drop-shadow-md group-hover:text-[#00e5ff] transition-colors duration-300">
-                    {proj.title}
-                  </h3>
-                  <p className="text-xs font-light text-white/70 leading-relaxed max-w-[250px] group-hover:text-white transition-colors duration-300">
-                    {proj.desc}
-                  </p>
-                </div>
-              </Html>
-            </group>
-          </group>
-        );
-      })}
+      {PROJECTS.map((proj, i) => (
+        <OrbitingCardItem 
+          key={proj.id}
+          proj={proj}
+          i={i}
+          dnaHeight={dnaHeight}
+          dnaRadius={dnaRadius}
+          dnaLoops={dnaLoops}
+          cardYSpacing={cardYSpacing}
+          setActiveProject={setActiveProject}
+          activeProject={activeProject}
+          angleOffsetDeg={angleOffsetDeg}
+          glassTransmission={glassTransmission}
+          glassRoughness={glassRoughness}
+        />
+      ))}
     </group>
   );
 }
+
+function OrbitingCardItem({ proj, i, dnaHeight, dnaRadius, dnaLoops, cardYSpacing, setActiveProject, activeProject, angleOffsetDeg, glassTransmission, glassRoughness }: any) {
+  const cardRef = useRef<THREE.Group>(null);
+  const glassMaterialRef = useRef<any>(null);
+  const accentRef = useRef<any>(null);
+  
+  const yTarget = (dnaHeight / 2 - 7.5) - (i * cardYSpacing); 
+  const t = ((dnaHeight / 2) - yTarget) / dnaHeight;
+  const isLeft = i % 2 !== 0; 
+  const angleOffset = isLeft ? (angleOffsetDeg * Math.PI / 180) : -(angleOffsetDeg * Math.PI / 180); 
+  const baseAngle = -t * Math.PI * 2 * dnaLoops; 
+  const cardAngle = baseAngle + angleOffset;
+  const themeColor = isLeft ? "#00e5ff" : "#ff2a00";
+  
+  const p1x = Math.cos(baseAngle) * dnaRadius;
+  const p1z = Math.sin(baseAngle) * dnaRadius;
+  const p2x = Math.cos(cardAngle) * 3.6; 
+  const p2z = Math.sin(cardAngle) * 3.6;
+  const localRotY = baseAngle - Math.PI / 2;
+  const accentX = isLeft ? 1.9 : -1.9;
+
+  const isActive = activeProject === proj.id;
+  const isAnyActive = !!activeProject;
+
+  useFrame((state, delta) => {
+    if (!cardRef.current) return;
+    
+    if (isActive) {
+      // Scale up massively to swallow the screen
+      cardRef.current.scale.lerp(new THREE.Vector3(12, 12, 12), 0.03);
+      // Slowly fade out the glass backing to reveal the cinematic UI underneath
+      if (glassMaterialRef.current) {
+         glassMaterialRef.current.opacity = THREE.MathUtils.lerp(glassMaterialRef.current.opacity, 0, 0.04);
+         glassMaterialRef.current.transparent = true;
+      }
+      if (accentRef.current) {
+         accentRef.current.opacity = THREE.MathUtils.lerp(accentRef.current.opacity, 0, 0.08);
+      }
+    } else if (isAnyActive) {
+      // Shrink other cards out of view
+      cardRef.current.scale.lerp(new THREE.Vector3(0.001, 0.001, 0.001), 0.08);
+    } else {
+      // Normal rest state
+      cardRef.current.scale.lerp(new THREE.Vector3(1, 1, 1), 0.08);
+      if (glassMaterialRef.current) {
+         glassMaterialRef.current.opacity = THREE.MathUtils.lerp(glassMaterialRef.current.opacity, 1, 0.05);
+         if (glassMaterialRef.current.opacity > 0.95) glassMaterialRef.current.transparent = false;
+      }
+      if (accentRef.current) {
+         accentRef.current.opacity = THREE.MathUtils.lerp(accentRef.current.opacity, 1, 0.05);
+      }
+    }
+  });
+
+  return (
+    <group>
+      {/* Glowing Attachment Node on DNA */}
+      <mesh position={[p1x, yTarget, p1z]}>
+         <sphereGeometry args={[0.08, 16, 16]} />
+         <meshBasicMaterial color={themeColor} />
+      </mesh>
+
+      {/* The 3D Card Object */}
+      <group 
+        ref={cardRef}
+        position={[p2x, yTarget, p2z]} 
+        rotation={[0, localRotY, 0]}
+        onClick={(e) => {
+          e.stopPropagation();
+          setActiveProject(proj.id);
+        }}
+        onPointerOver={(e) => {
+          e.stopPropagation();
+          document.body.style.cursor = 'pointer';
+        }}
+        onPointerOut={(e) => {
+          e.stopPropagation();
+          document.body.style.cursor = 'auto';
+        }}
+      >
+        {/* Soft fading particles emitted when card expands */}
+        {isActive && <CardParticles color={themeColor} />}
+
+        {/* Dark Cybernetic UI Glass Backing */}
+        <RoundedBox args={[3.8, 2.8, 0.05]} radius={0.15} smoothness={4}>
+          <meshPhysicalMaterial 
+            ref={glassMaterialRef}
+            color="#030305"
+            transmission={glassTransmission}
+            opacity={1}
+            metalness={0.5}
+            roughness={glassRoughness}
+            ior={1.5}
+            thickness={1.0}
+            clearcoat={1}
+          />
+        </RoundedBox>
+
+        {/* Glowing Tech Accent Line */}
+        <mesh position={[accentX, 0, 0.06]}>
+          <planeGeometry args={[0.04, 2.0]} />
+          <meshBasicMaterial ref={accentRef} color={themeColor} transparent opacity={1} />
+        </mesh>
+
+        {/* 3D Projected HTML Overlay */}
+        <Html transform position={[0, 0, 0.1]} distanceFactor={2} center className={isActive ? 'opacity-0 transition-opacity duration-700 pointer-events-none' : 'opacity-100 transition-opacity duration-300'}>
+          <div 
+            onClick={(e) => {
+               e.stopPropagation();
+               setActiveProject(proj.id);
+            }}
+            className={`w-[280px] text-left pointer-events-auto cursor-pointer select-none transition-all duration-500 hover:scale-[1.03] group ${isLeft ? 'pr-4' : 'pl-4'}`}
+          >
+            <p className="text-[10px] text-[#00e5ff] mb-2 uppercase tracking-[0.2em] font-medium drop-shadow-[0_0_8px_rgba(0,229,255,0.8)]">
+              {proj.tech}
+            </p>
+            <h3 className="text-3xl font-light text-white mb-3 tracking-wide drop-shadow-md group-hover:text-[#00e5ff] transition-colors duration-300">
+              {proj.title}
+            </h3>
+            <p className="text-xs font-light text-white/70 leading-relaxed max-w-[250px] group-hover:text-white transition-colors duration-300">
+              {proj.desc}
+            </p>
+          </div>
+        </Html>
+      </group>
+    </group>
+  );
+}
+
+// Gentle drifting particles inside the expanding card portal
+function CardParticles({ color }: { color: string }) {
+  const pointsRef = useRef<THREE.Points>(null);
+  const particleCount = 200;
+  
+  const { positions, sizes } = useMemo(() => {
+    const pos = new Float32Array(particleCount * 3);
+    const siz = new Float32Array(particleCount);
+    for(let i=0; i<particleCount; i++) {
+      pos[i*3] = (Math.random() - 0.5) * 4;
+      pos[i*3+1] = (Math.random() - 0.5) * 3;
+      pos[i*3+2] = (Math.random() - 0.5) * 2;
+      siz[i] = Math.random() * 0.04;
+    }
+    return { positions: pos, sizes: siz };
+  }, []);
+
+  useFrame((state, delta) => {
+    if (!pointsRef.current) return;
+    const pos = pointsRef.current.geometry.attributes.position.array as Float32Array;
+    for(let i=0; i<particleCount; i++) {
+      pos[i*3+2] += delta * 0.8; // Drift towards camera
+      if (pos[i*3+2] > 2) pos[i*3+2] = -2; // Loop back
+    }
+    pointsRef.current.geometry.attributes.position.needsUpdate = true;
+  });
+
+  return (
+    <points ref={pointsRef}>
+      <bufferGeometry>
+        <bufferAttribute attach="attributes-position" count={particleCount} array={positions} itemSize={3} />
+        <bufferAttribute attach="attributes-size" count={particleCount} array={sizes} itemSize={1} />
+      </bufferGeometry>
+      <pointsMaterial color={color} transparent opacity={0.6} sizeAttenuation blending={THREE.AdditiveBlending} depthWrite={false} />
+    </points>
+  );
+}
+
+
 
 const TECH_STACK = [
   { name: "Python", icon: Terminal },
@@ -414,10 +511,12 @@ function ActiveTheoryCore({ visible, positionY = 15.0, shrinkToDot = false }: { 
   );
 }
 
+
+
 // ---------------------------------------------------------
 // Main Orchestration Stage
 // ---------------------------------------------------------
-function MainStage({ scrollProgress }: { scrollProgress: number }) {
+function MainStage({ scrollProgress, setActiveProject, activeProject }: { scrollProgress: number, setActiveProject: (id: string) => void, activeProject: string | null }) {
   const stageRef = useRef<THREE.Group>(null);
   const isHero = scrollProgress < 0.1;
 
@@ -436,6 +535,11 @@ function MainStage({ scrollProgress }: { scrollProgress: number }) {
   
   const finaleEffect = 'Core Re-Assembly';
 
+  // State derived from scrollProgress
+  const isAboutActive = scrollProgress > 0.1 && scrollProgress <= 0.2;
+  const isTechStackActive = finaleEffect === 'Core Re-Assembly' && scrollProgress > 0.8 && scrollProgress < 0.95;
+  const isContactActive = scrollProgress >= 0.95;
+
   useFrame((state) => {
     if (stageRef.current) {
       // Scroll Phases:
@@ -448,10 +552,6 @@ function MainStage({ scrollProgress }: { scrollProgress: number }) {
       const scrollTraverse = Math.min(1, Math.max(0, (scrollProgress - 0.2) / 0.6));
       const finaleT = Math.max(0, (scrollProgress - 0.8) / 0.15); // 0 to 1 at the very bottom
       
-      const isAboutActive = scrollProgress > 0.1 && scrollProgress <= 0.2;
-      const isTechStackActive = finaleEffect === 'Core Re-Assembly' && scrollProgress > 0.8 && scrollProgress < 0.95;
-      const isContactActive = scrollProgress >= 0.95;
-
       // X shift for layout balancing
       let targetX = 0;
       if (isHero) targetX = 2.5;
@@ -526,10 +626,7 @@ function MainStage({ scrollProgress }: { scrollProgress: number }) {
     }
   });
 
-  const scrollTraverse = Math.min(1, Math.max(0, (scrollProgress - 0.2) / 0.6));
-  const isAboutActive = scrollProgress > 0.1 && scrollProgress <= 0.2;
-  const isTechStackActive = finaleEffect === 'Core Re-Assembly' && scrollProgress > 0.8 && scrollProgress < 0.95;
-  const isContactActive = scrollProgress >= 0.95;
+  const isDnaVisible = !isHero && !isAboutActive && scrollProgress <= 0.8;
 
   return (
     <group ref={stageRef} position={[0, -(dnaHeight / 2), 0]} rotation={[0, Math.PI/2, 0]}>
@@ -548,7 +645,7 @@ function MainStage({ scrollProgress }: { scrollProgress: number }) {
       />
 
       <DNAStrand 
-        visible={!isHero && !isAboutActive && scrollProgress <= 0.8} 
+        visible={isDnaVisible} 
         dnaRadius={dnaRadius}
         dnaHeight={dnaHeight}
         dnaLoops={dnaLoops}
@@ -556,12 +653,14 @@ function MainStage({ scrollProgress }: { scrollProgress: number }) {
         scatterAmount={scatterAmount}
       />
       <OrbitingCards 
-        visible={!isHero && !isAboutActive && scrollProgress <= 0.8} 
-        dnaRadius={dnaRadius}
+        visible={isDnaVisible} 
+        scrollProgress={scrollProgress}
         dnaHeight={dnaHeight}
+        dnaRadius={dnaRadius}
         dnaLoops={dnaLoops}
-        cardRadius={cardRadius}
         cardYSpacing={cardYSpacing}
+        setActiveProject={setActiveProject}
+        activeProject={activeProject}
         angleOffsetDeg={angleOffsetDeg}
         glassTransmission={glassTransmission}
         glassRoughness={glassRoughness}
@@ -603,6 +702,21 @@ const PROJECTS = [
 
 export default function Experience() {
   const [scrollProgress, setScrollProgress] = useState(0);
+  const [activeProject, setActiveProject] = useState<string | null>(null);
+  const [selectedProjData, setSelectedProjData] = useState<any>(null);
+
+  useEffect(() => {
+    if (activeProject) {
+      setSelectedProjData(PROJECTS.find(p => p.id === activeProject));
+    }
+  }, [activeProject]);
+
+  useEffect(() => {
+    if (!activeProject) return;
+    const handleScroll = () => setActiveProject(null);
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [activeProject]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -636,7 +750,7 @@ export default function Experience() {
           <pointLight position={[-10, -10, -5]} intensity={1.5} color="#00e5ff" />
 
           {/* Main Orchestrator for Globe/DNA Morphing and Positioning */}
-          <MainStage scrollProgress={scrollProgress} />
+          <MainStage scrollProgress={scrollProgress} setActiveProject={setActiveProject} activeProject={activeProject} />
 
           <EffectComposer>
             <Bloom intensity={1.5} luminanceThreshold={0.2} luminanceSmoothing={0.9} mipmapBlur={true} />
@@ -691,7 +805,7 @@ export default function Experience() {
 
         {/* Fixed Hero Overlay */}
         <div className="fixed inset-0 flex flex-col justify-center px-16 md:px-32 max-w-4xl pt-20 pointer-events-none">
-          <div className="pointer-events-auto" style={{ opacity: Math.max(0, 1 - (scrollProgress / 0.1)), transition: 'opacity 0.1s' }}>
+          <div className={scrollProgress <= 0.1 ? "pointer-events-auto" : "pointer-events-none"} style={{ opacity: Math.max(0, 1 - (scrollProgress / 0.1)), transition: 'opacity 0.1s' }}>
             <span className="text-[#00e5ff] font-mono text-[10px] md:text-xs tracking-[0.3em] uppercase mb-6 block">
               Akash Yaduwanshi • AI Engineer
             </span>
@@ -714,7 +828,7 @@ export default function Experience() {
             transition: 'all 0.5s ease-out'
           }}
         >
-          <div className="pointer-events-auto">
+          <div className={(scrollProgress > 0.05 && scrollProgress <= 0.25) ? "pointer-events-auto" : "pointer-events-none"}>
             <span className="text-xs text-[#00e5ff] mb-3 block uppercase tracking-[0.2em]">Career Objective</span>
             <h2 className="text-4xl md:text-5xl font-light text-white mb-6">
               Engineering Mindset
@@ -737,7 +851,7 @@ export default function Experience() {
             transition: 'all 0.5s ease-out'
           }}
         >
-          <div className="pointer-events-auto">
+          <div className={(scrollProgress > 0.75 && scrollProgress < 0.95) ? "pointer-events-auto" : "pointer-events-none"}>
             <span className="text-xs text-[#00e5ff] mb-3 block uppercase tracking-[0.2em]">Core Architecture</span>
             <h2 className="text-4xl md:text-6xl font-light text-white mb-6">
               Neural Tech Stack
@@ -763,7 +877,7 @@ export default function Experience() {
             transition: 'all 0.5s ease-out'
           }}
         >
-          <div className="pointer-events-auto">
+          <div className={scrollProgress >= 0.95 ? "pointer-events-auto" : "pointer-events-none"}>
             <h2 className="text-6xl md:text-8xl font-light text-white tracking-tighter mb-4 drop-shadow-[0_0_20px_rgba(0,229,255,0.3)]">
               ESTABLISH
             </h2>
@@ -809,6 +923,79 @@ export default function Experience() {
         </div>
 
       </div>
+
+      {/* Cinematic Active Project Overlay */}
+      <div 
+        className={`fixed inset-0 z-[100] pointer-events-none flex items-center justify-center transition-all ease-in-out ${activeProject ? 'duration-[2000ms] opacity-100' : 'duration-700 opacity-0'}`}
+      >
+        {/* Deep darkening background vignette - wait for card to expand before darkening */}
+        <div 
+          className={`absolute inset-0 transition-all ${activeProject ? 'duration-[1500ms] delay-[400ms] opacity-100 backdrop-blur-xl' : 'duration-500 delay-0 opacity-0 backdrop-blur-none'}`}
+          style={{ background: 'radial-gradient(circle at center, rgba(3,3,5,0.7) 0%, rgba(3,3,5,0.98) 100%)' }}
+        />
+
+        <div className={`relative w-full h-full max-w-[1400px] mx-auto px-8 md:px-16 flex flex-col md:flex-row items-center justify-between gap-12 transition-all cubic-bezier(0.16, 1, 0.3, 1) ${activeProject ? 'duration-[1200ms] delay-[800ms] pointer-events-auto scale-100 opacity-100 translate-y-0' : 'duration-[400ms] delay-0 pointer-events-none scale-[0.97] opacity-0 translate-y-8'}`}>
+          
+          {/* Left Side: Details & Close */}
+          <div className="w-full md:w-[35%] flex flex-col items-start text-left z-10 shrink-0">
+            <h2 className="text-5xl md:text-6xl font-light text-white mb-3 tracking-tight">
+              {selectedProjData?.title}
+            </h2>
+            <p className="text-xs text-[#00e5ff] uppercase tracking-[0.2em] font-medium mb-8">
+              {selectedProjData?.tech}
+            </p>
+            <p className="text-sm md:text-base font-light text-white/60 leading-relaxed mb-10 max-w-sm">
+              {selectedProjData?.desc}
+            </p>
+            
+            <div className="flex flex-col gap-6">
+              <a 
+                href={selectedProjData?.link}
+                target="_blank" rel="noreferrer"
+                className="group w-fit relative overflow-hidden rounded-full border border-white/20 bg-white/5 backdrop-blur-sm px-8 py-3 transition-all hover:border-[#00e5ff]/50 hover:shadow-[0_0_20px_rgba(0,229,255,0.2)]"
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-[#00e5ff]/0 via-[#00e5ff]/10 to-[#00e5ff]/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700 ease-in-out" />
+                <span className="text-[10px] tracking-[0.2em] uppercase text-white font-medium group-hover:text-[#00e5ff] transition-colors relative z-10">Project Link</span>
+              </a>
+
+              <button 
+                onClick={() => setActiveProject(null)}
+                className="text-[10px] text-white/50 tracking-[0.2em] uppercase hover:text-white transition-colors flex items-center gap-3 mt-4"
+              >
+                <span className="text-lg leading-none mb-[2px]">&larr;</span> CLOSE
+              </button>
+            </div>
+          </div>
+
+          {/* Right Side: Massive Display Monitor */}
+          <div className="flex-1 w-full h-[50vh] md:h-[75vh] bg-[#020203] border border-white/5 rounded-2xl md:rounded-[2rem] shadow-[0_0_100px_rgba(0,0,0,0.8)] flex items-center justify-center overflow-hidden relative group">
+             {/* Internal monitor glow */}
+             <div className="absolute inset-0 bg-gradient-to-tr from-[#00e5ff]/[0.02] to-transparent pointer-events-none" />
+             
+             {/* Decorative Monitor Frame elements */}
+             <div className="absolute top-6 right-6 w-1.5 h-1.5 rounded-full bg-white/20" />
+             <div className="absolute bottom-6 left-1/2 -translate-x-1/2 w-16 h-1 rounded-full bg-white/10" />
+             <div className="absolute top-0 left-0 w-full h-full border border-white/[0.02] rounded-[2rem] pointer-events-none" />
+             
+             {/* Placeholder for project visual - The actual image */}
+             <div className="relative w-full h-full flex items-center justify-center">
+               <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noiseFilter%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.85%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noiseFilter)%22/%3E%3C/svg%3E")' }} />
+               
+               {/* Center Logo/Visual Placeholder */}
+               <div className="flex flex-col items-center gap-6 opacity-30 group-hover:opacity-60 transition-opacity duration-700">
+                  <div className="w-16 h-16 border border-[#00e5ff]/50 rounded-xl flex items-center justify-center rotate-45 group-hover:rotate-90 transition-all duration-1000">
+                    <div className="w-8 h-8 border border-white/50 rounded-sm -rotate-45 group-hover:-rotate-90 transition-all duration-1000" />
+                  </div>
+                  <div className="text-[#00e5ff] font-mono text-[10px] tracking-[0.4em] uppercase">
+                    Neural Link Active
+                  </div>
+               </div>
+             </div>
+          </div>
+
+        </div>
+      </div>
+
     </div>
   );
 }
