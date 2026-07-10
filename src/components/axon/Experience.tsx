@@ -1,9 +1,10 @@
 import { useEffect, useState, useRef, useMemo } from "react";
 import { Canvas, useFrame, extend } from "@react-three/fiber";
-import { Sphere, Sparkles, shaderMaterial, RoundedBox, Html, Instances, Instance } from "@react-three/drei";
+import { OrbitControls, Sphere, Html, shaderMaterial, Instances, Instance, RoundedBox } from "@react-three/drei";
 import { EffectComposer, Bloom, Noise } from "@react-three/postprocessing";
 import * as THREE from "three";
 import { useControls, Leva } from "leva";
+import { Terminal, Brain, Cpu, Flame, Box, Zap, Network, Sparkles, MessageSquare, Layers, Eye, Database, Code } from 'lucide-react';
 
 // ==========================================
 // PURE THREE.JS GLSL CUSTOM SHADER
@@ -313,10 +314,69 @@ function OrbitingCards({ visible, dnaRadius, dnaHeight, dnaLoops, cardRadius, ca
   );
 }
 
+const TECH_STACK = [
+  { name: "Python", icon: Terminal },
+  { name: "PyTorch", icon: Flame },
+  { name: "Transformers", icon: Layers },
+  { name: "FastAPI", icon: Zap },
+  { name: "Docker", icon: Box },
+  { name: "TypeScript", icon: Code },
+  { name: "PostgreSQL", icon: Database },
+  { name: "Scikit-Learn", icon: Brain },
+  { name: "LLMs", icon: MessageSquare },
+  { name: "TensorFlow", icon: Network },
+  { name: "C / C++", icon: Cpu },
+  { name: "NLP", icon: Eye },
+  { name: "React", icon: Box }
+];
+
+function OrbitingTechStack({ visible, positionY }: { visible: boolean; positionY: number }) {
+  const groupRef = useRef<THREE.Group>(null);
+  
+  useFrame((state) => {
+    if (groupRef.current) {
+      const targetScale = visible ? 1 : 0.001;
+      groupRef.current.scale.lerp(new THREE.Vector3(targetScale, targetScale, targetScale), 0.05);
+      
+      // Orbit logic: slightly slower rotation for readability
+      groupRef.current.rotation.y -= 0.0025;
+
+      // Increased forward tilt to spread out cards at the left/right horizons
+      groupRef.current.rotation.x = 0.25;
+      groupRef.current.rotation.z = -0.05;
+    }
+  });
+
+  return (
+    <group ref={groupRef} position={[0, positionY, 0]} scale={0.001}>
+      {TECH_STACK.map((tech, i) => {
+        // Single row circular distribution
+        const angle = (i / TECH_STACK.length) * Math.PI * 2;
+        const radius = 5.2; // Tighter ring
+        
+        const x = Math.cos(angle) * radius;
+        const y = 0; // Perfectly flat Saturn ring (no wave)
+        const z = Math.sin(angle) * radius;
+
+        const Icon = tech.icon;
+
+        return (
+          <Html key={tech.name} transform sprite occlude center position={[x, y, z]} distanceFactor={3.5}>
+            <div className="flex items-center gap-2.5 px-4 py-2 border border-[#00e5ff]/40 bg-[#030305]/95 backdrop-blur-md rounded-lg text-[#00e5ff] text-[10px] uppercase tracking-[0.1em] font-semibold shadow-[0_0_15px_rgba(0,229,255,0.2)] whitespace-nowrap select-none group hover:scale-110 hover:border-[#00e5ff] hover:shadow-[0_0_25px_rgba(0,229,255,0.4)] transition-all cursor-default">
+              <Icon size={14} className="text-[#ff2a00] group-hover:text-[#00e5ff] transition-colors duration-300" />
+              <span className="drop-shadow-[0_0_8px_rgba(0,229,255,0.5)]">{tech.name}</span>
+            </div>
+          </Html>
+        );
+      })}
+    </group>
+  );
+}
+
 // ---------------------------------------------------------
 // Core Fluid Sphere Component
 // ---------------------------------------------------------
-function ActiveTheoryCore({ visible }: { visible: boolean }) {
+function ActiveTheoryCore({ visible, positionY = 15.0, shrinkToDot = false }: { visible: boolean, positionY?: number, shrinkToDot?: boolean }) {
   const materialRef = useRef<any>(null);
   const wireframeRef = useRef<THREE.Mesh>(null);
   const groupRef = useRef<THREE.Group>(null);
@@ -336,13 +396,13 @@ function ActiveTheoryCore({ visible }: { visible: boolean }) {
       groupRef.current.rotation.y = THREE.MathUtils.lerp(groupRef.current.rotation.y, targetX, 0.05);
       groupRef.current.rotation.x = THREE.MathUtils.lerp(groupRef.current.rotation.x, -targetY, 0.05);
 
-      const targetScale = visible ? 1 : 0.001;
+      const targetScale = !visible ? 0.001 : (shrinkToDot ? 0.08 : 1);
       groupRef.current.scale.lerp(new THREE.Vector3(targetScale, targetScale, targetScale), 0.05);
     }
   });
 
   return (
-    <group ref={groupRef} position={[0, 15.0, 0]}>
+    <group ref={groupRef} position={[0, positionY, 0]}>
       {/* Drastically reduced polygon count from 256x256 to 64x64 for massive performance boost */}
       <Sphere args={[2.0, 64, 64]}>
         <fluidShaderMaterial ref={materialRef} />
@@ -378,38 +438,116 @@ function MainStage({ scrollProgress }: { scrollProgress: number }) {
     glassRoughness: { value: 0.30, min: 0, max: 1, step: 0.05 },
   });
 
-  useFrame(() => {
-    if (stageRef.current) {
-      // X shift for Hero (Push globe to the right)
-      const targetX = isHero ? 4 : 0;
-      stageRef.current.position.x = THREE.MathUtils.lerp(stageRef.current.position.x, targetX, 0.05);
+  const { finaleEffect } = useControls('Cinematics', {
+    finaleEffect: { 
+      options: ['Warp Tunnel', 'Core Re-Assembly', 'Nebula', 'Magnetic Fluid', 'Singularity', 'Quantum Glitch', 'Cyber-Tornado', 'Ascension'],
+      value: 'Core Re-Assembly'
+    }
+  });
 
-      // Map remaining scroll (0.1 -> 1.0) to full DNA traversal
-      const scrollTraverse = Math.max(0, (scrollProgress - 0.1) / 0.9);
+  useFrame((state) => {
+    if (stageRef.current) {
+      // Map remaining scroll (0.1 -> 0.8) to full DNA traversal
+      const scrollTraverse = Math.min(1, Math.max(0, (scrollProgress - 0.1) / 0.7));
+      const finaleT = Math.max(0, (scrollProgress - 0.8) / 0.15); // 0 to 1 at the very bottom
+      const isTechStackActive = finaleEffect === 'Core Re-Assembly' && scrollProgress > 0.8 && scrollProgress < 0.95;
+      const isContactActive = scrollProgress >= 0.95;
+
+      // X shift for layout balancing
+      let targetX = 0;
+      if (isHero) targetX = 2.5;
+      else if (isTechStackActive) targetX = 2.5;
+      else if (isContactActive) targetX = 0; // Center the core for the contact section
+
+      stageRef.current.position.x = THREE.MathUtils.lerp(stageRef.current.position.x, targetX, 0.05);
 
       // 1. Pan the camera vertically DOWN the DNA
       const targetY = THREE.MathUtils.lerp(-(dnaHeight / 2), (dnaHeight / 2), scrollTraverse);
-      stageRef.current.position.y = THREE.MathUtils.lerp(stageRef.current.position.y, targetY, 0.05);
-
+      
       // 2. Rotate the DNA mathematically to bring the active card exactly to the front (+Z)
       const currentLocalY = -targetY;
       const t = ((dnaHeight / 2) - currentLocalY) / dnaHeight;
       const currentAngle = -t * Math.PI * 2 * dnaLoops; 
+      
+      let targetRotationY = -currentAngle + (Math.PI / 2);
+      let targetZ = 0;
+      let targetYOffset = 0;
+      let targetScaleX = 1;
+      let targetScaleY = 1;
+      let targetScaleZ = 1;
+      let targetRotX = 0;
+      let targetRotZ = 0;
 
-      // To make an object at currentAngle face the camera (+Z), counter-rotate the group
-      const targetRotationY = -currentAngle + (Math.PI / 2);
+      // APPLY FINALE EFFECTS
+      if (finaleT > 0 && !isHero) {
+        if (finaleEffect === 'Warp Tunnel') {
+          targetZ = finaleT * 18; // Push stage towards camera (pass through)
+          targetScaleX = 1 + finaleT * 3; // Open up the DNA
+          targetScaleZ = 1 + finaleT * 3;
+        } else if (finaleEffect === 'Nebula') {
+          targetScaleX = 1 + finaleT * 12; // Massive expansion into starfield
+          targetScaleZ = 1 + finaleT * 12;
+        } else if (finaleEffect === 'Magnetic Fluid') {
+          // Bend DNA towards mouse pointer
+          targetRotZ = state.pointer.x * finaleT * 1.5;
+          targetRotX = -state.pointer.y * finaleT * 1.5;
+        } else if (finaleEffect === 'Singularity') {
+          // Compress on X/Z and stretch on Y into a laser beam
+          targetScaleX = Math.max(0.001, 1 - finaleT * 2);
+          targetScaleZ = Math.max(0.001, 1 - finaleT * 2);
+          targetScaleY = 1 + finaleT * 5;
+        } else if (finaleEffect === 'Quantum Glitch') {
+          // Intense random teleportation and jitter
+          targetRotX = (Math.random() - 0.5) * finaleT * 0.8;
+          targetRotZ = (Math.random() - 0.5) * finaleT * 0.8;
+          targetScaleX = 1 + (Math.random() - 0.5) * finaleT * 3;
+          targetScaleZ = 1 + (Math.random() - 0.5) * finaleT * 3;
+        } else if (finaleEffect === 'Cyber-Tornado') {
+          // Uncontrollable fast spinning
+          targetRotationY += state.clock.getElapsedTime() * 15 * finaleT;
+          targetScaleX = 1 + finaleT * 1.5;
+          targetScaleZ = 1 + finaleT * 1.5;
+        } else if (finaleEffect === 'Ascension') {
+          // Fly upwards into the sky
+          targetYOffset = finaleT * 40;
+        }
+      }
 
-      // Idle spin removed as requested so the cards are easier to click and perfectly locked in
+      stageRef.current.position.y = THREE.MathUtils.lerp(stageRef.current.position.y, targetY + targetYOffset, 0.05);
+      stageRef.current.position.z = THREE.MathUtils.lerp(stageRef.current.position.z, targetZ, 0.05);
+      
+      stageRef.current.scale.x = THREE.MathUtils.lerp(stageRef.current.scale.x, targetScaleX, 0.05);
+      stageRef.current.scale.y = THREE.MathUtils.lerp(stageRef.current.scale.y, targetScaleY, 0.05);
+      stageRef.current.scale.z = THREE.MathUtils.lerp(stageRef.current.scale.z, targetScaleZ, 0.05);
+      
       stageRef.current.rotation.y = THREE.MathUtils.lerp(stageRef.current.rotation.y, targetRotationY, 0.05);
+      stageRef.current.rotation.x = THREE.MathUtils.lerp(stageRef.current.rotation.x, targetRotX, 0.05);
+      stageRef.current.rotation.z = THREE.MathUtils.lerp(stageRef.current.rotation.z, targetRotZ, 0.05);
     }
   });
+
+  const scrollTraverse = Math.min(1, Math.max(0, (scrollProgress - 0.1) / 0.7));
+  const isTechStackActive = finaleEffect === 'Core Re-Assembly' && scrollProgress > 0.8 && scrollProgress < 0.95;
+  const isContactActive = scrollProgress >= 0.95;
 
   return (
     <group ref={stageRef} position={[0, -(dnaHeight / 2), 0]} rotation={[0, Math.PI/2, 0]}>
       {/* Morphing Elements */}
-      <ActiveTheoryCore visible={isHero} />
+      <ActiveTheoryCore visible={isHero} positionY={15.0} />
+      
+      {/* Finale: Core Re-Assembly */}
+      <ActiveTheoryCore 
+        visible={(finaleEffect === 'Core Re-Assembly' && scrollProgress > 0.8) || isContactActive} 
+        positionY={-(dnaHeight / 2)} 
+        shrinkToDot={isContactActive}
+      />
+      <OrbitingTechStack
+        visible={isTechStackActive} 
+        positionY={-(dnaHeight / 2)} 
+      />
+
       <DNAStrand 
-        visible={!isHero} 
+        visible={!isHero && scrollProgress <= 0.8} 
         dnaRadius={dnaRadius}
         dnaHeight={dnaHeight}
         dnaLoops={dnaLoops}
@@ -417,7 +555,7 @@ function MainStage({ scrollProgress }: { scrollProgress: number }) {
         scatterAmount={scatterAmount}
       />
       <OrbitingCards 
-        visible={!isHero} 
+        visible={!isHero && scrollProgress <= 0.8} 
         dnaRadius={dnaRadius}
         dnaHeight={dnaHeight}
         dnaLoops={dnaLoops}
@@ -434,39 +572,31 @@ function MainStage({ scrollProgress }: { scrollProgress: number }) {
 const PROJECTS = [
   {
     id: "proj-1",
-    title: "PhantmOS Pipeline",
-    tech: "FASTAPI / HUGGINGFACE",
-    desc: "Multi-tenant SaaS architecture for dynamic job discovery. Engineered zero-leakage data isolation and live token tracking.",
+    title: "Sentinel Flow",
+    tech: "TYPESCRIPT / SQLITE / AI",
+    desc: "AI Code Intelligence System mapping codebases into interactive knowledge graphs with dual-path AI routing.",
+    link: "https://marketplace.visualstudio.com/items?itemName=UnshakenSoul.sentinel-flow-extension"
   },
   {
     id: "proj-2",
-    title: "Sentinel Vision",
-    tech: "PYTORCH / CUDA",
-    desc: "Real-time anomaly detection system processing 60fps video streams using custom transformer architectures.",
+    title: "PhantmOS v3.0",
+    tech: "PYTHON / FASTAPI / DOCKER",
+    desc: "Autonomous Multi-Agent Job Engine. Discovers remote jobs, scores relevance, and tailors applications using LLMs.",
+    link: "https://unshakensou17-phantmos.hf.space"
   },
   {
     id: "proj-3",
-    title: "Neural Ontology",
-    tech: "ELASTICSEARCH / NLP",
-    desc: "Automated a 600+ node taxonomy ontology, achieving 94% recall precision across diverse market sectors.",
+    title: "Reasoning Bottlenecks",
+    tech: "PYTORCH / TRANSFORMERS",
+    desc: "Implemented slot-based reasoning bottlenecks in small Transformers, improving mean accuracy on the SCAN benchmark from 0.55 to 0.71.",
+    link: "https://github.com/unshakensoul17/reasoning-bottlenecks-scan"
   },
   {
     id: "proj-4",
-    title: "Quantum Graph",
-    tech: "RUST / WEBGPU",
-    desc: "High-dimensional topological mapping algorithms executing directly on the GPU.",
-  },
-  {
-    id: "proj-5",
-    title: "Synaptic DB",
-    tech: "GO / KUBERNETES",
-    desc: "A globally distributed vector database optimized for sub-millisecond similarity search.",
-  },
-  {
-    id: "proj-6",
-    title: "Swarm Logic",
-    tech: "PYTHON / WEBSOCKETS",
-    desc: "Multi-agent reinforcement learning environment for coordinating autonomous drone fleets.",
+    title: "SmartCart Clustering",
+    tech: "PYTHON / SCIKIT-LEARN",
+    desc: "Unsupervised learning pipeline identifying actionable customer segments using PCA dimensionality reduction and K-Means.",
+    link: "https://github.com/unshakensoul17/SmartCart-Customer-Segmentation"
   }
 ];
 
@@ -493,8 +623,8 @@ export default function Experience() {
       `}</style>
 
       <Leva 
-        hidden={true} 
-        collapsed={true} 
+        hidden={false} 
+        collapsed={false} 
         theme={{
           colors: {
             elevation1: '#030305',
@@ -565,6 +695,9 @@ export default function Experience() {
 
         <section className="h-[100vh] flex flex-col justify-center px-16 md:px-32 max-w-4xl pt-20">
           <div style={{ opacity: Math.max(0, 1 - (scrollProgress / 0.1)), transition: 'opacity 0.1s' }}>
+            <span className="text-[#00e5ff] font-mono text-[10px] md:text-xs tracking-[0.3em] uppercase mb-6 block">
+              Akash Yaduwanshi • AI Engineer
+            </span>
             <h1 className="text-5xl md:text-7xl font-light tracking-tight text-white mb-6 leading-[1.1]">
               <span className="text-[#00e5ff] font-medium">Engineering intelligence</span> <br />
               at the synaptic level
@@ -581,15 +714,47 @@ export default function Experience() {
         <section className="h-[100vh] flex flex-col justify-center px-16 md:px-32 max-w-2xl relative">
           <div
             className="pointer-events-auto transition-opacity duration-300"
-            style={{ opacity: scrollProgress > 0.85 ? 1 : 0 }}
+            style={{ opacity: (scrollProgress > 0.8 && scrollProgress < 0.95) ? 1 : 0 }}
           >
-            <span className="text-xs text-[#00e5ff] mb-3 block uppercase tracking-[0.2em]">End of sequence</span>
+            <span className="text-xs text-[#00e5ff] mb-3 block uppercase tracking-[0.2em]">Core Architecture</span>
             <h2 className="text-4xl md:text-6xl font-light text-white mb-6">
-              Ready to deploy?
+              Neural Tech Stack
             </h2>
-            <button className="mt-8 rounded-full bg-[#00e5ff] px-10 py-5 text-[15px] tracking-widest uppercase font-medium text-[#030305] transition-all hover:scale-105 hover:bg-white shadow-[0_0_20px_rgba(0,229,255,0.3)]">
-              Initialize Contact
+            <p className="text-xl md:text-2xl font-light text-white/50 leading-relaxed mb-12 max-w-xl">
+              Engineered with an advanced toolkit for deep learning, generative AI, and high-performance neural networks.
+            </p>
+            <button className="rounded-full bg-white/5 border border-white/10 px-8 py-4 text-[13px] tracking-widest uppercase font-medium text-white transition-all hover:bg-white hover:text-[#030305]">
+              View Architecture
             </button>
+          </div>
+        </section>
+
+        {/* Contact Overlay */}
+        <section className="h-[100vh] flex flex-col justify-center items-center text-center px-8 relative">
+          <div
+            className="pointer-events-auto transition-opacity duration-500"
+            style={{ opacity: scrollProgress >= 0.95 ? 1 : 0 }}
+          >
+            <span className="text-xs text-[#00e5ff] mb-4 block uppercase tracking-[0.3em] font-medium">Neural Handshake</span>
+            <h2 className="text-5xl md:text-7xl font-light text-white mb-12 tracking-tight">
+              ESTABLISH <br /> CONNECTION
+            </h2>
+            
+            <div className="flex flex-wrap justify-center gap-6 max-w-3xl">
+              <a href="mailto:aakashyaduwanshi0470@gmail.com" target="_blank" rel="noreferrer" className="group relative px-8 py-4 bg-[#030305]/60 backdrop-blur-md border border-[#00e5ff]/20 rounded-2xl overflow-hidden hover:border-[#00e5ff]/80 hover:shadow-[0_0_30px_rgba(0,229,255,0.3)] transition-all duration-300">
+                <div className="absolute inset-0 bg-gradient-to-r from-[#00e5ff]/0 via-[#00e5ff]/5 to-[#00e5ff]/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
+                <span className="text-white text-sm tracking-[0.15em] uppercase font-medium group-hover:text-[#00e5ff] transition-colors">Email</span>
+              </a>
+              <a href="https://github.com/unshakensoul17" target="_blank" rel="noreferrer" className="group relative px-8 py-4 bg-[#030305]/60 backdrop-blur-md border border-[#00e5ff]/20 rounded-2xl overflow-hidden hover:border-[#00e5ff]/80 hover:shadow-[0_0_30px_rgba(0,229,255,0.3)] transition-all duration-300">
+                <span className="text-white text-sm tracking-[0.15em] uppercase font-medium group-hover:text-[#00e5ff] transition-colors">GitHub</span>
+              </a>
+              <a href="https://linkedin.com/in/akash-yaduwanshi-902a3b352" target="_blank" rel="noreferrer" className="group relative px-8 py-4 bg-[#030305]/60 backdrop-blur-md border border-[#00e5ff]/20 rounded-2xl overflow-hidden hover:border-[#00e5ff]/80 hover:shadow-[0_0_30px_rgba(0,229,255,0.3)] transition-all duration-300">
+                <span className="text-white text-sm tracking-[0.15em] uppercase font-medium group-hover:text-[#00e5ff] transition-colors">LinkedIn</span>
+              </a>
+              <a href="mailto:aakashyaduwanshi0470@gmail.com?subject=Resume%20Request" className="group relative px-8 py-4 bg-[#00e5ff]/10 backdrop-blur-md border border-[#00e5ff]/50 rounded-2xl overflow-hidden hover:bg-[#00e5ff]/20 hover:border-[#00e5ff] hover:shadow-[0_0_30px_rgba(0,229,255,0.5)] transition-all duration-300">
+                <span className="text-[#00e5ff] text-sm tracking-[0.15em] uppercase font-medium">Request Resume</span>
+              </a>
+            </div>
           </div>
         </section>
 
