@@ -879,6 +879,14 @@ export default function Experience() {
   const [selectedProjData, setSelectedProjData] = useState<any>(null);
   const scrollRef = useRef(0);
   const lastPhaseRef = useRef(-1);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    setIsMobile(window.innerWidth < 768);
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     if (activeProject) {
