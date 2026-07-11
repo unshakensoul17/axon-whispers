@@ -77,7 +77,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       // ── Primary SEO ──────────────────────────────────────────────────
       { title: "Akash Yaduwanshi | AI Engineer Portfolio | Machine Learning in Indore" },
       { name: "description", content: "Explore the portfolio of Akash Yaduwanshi, an AI Engineer and ML Researcher based in Indore. Specializing in LLMs, machine learning, multi-agent systems, and autonomous AI pipelines." },
-      { name: "keywords", content: "Akash Yaduwanshi, AI Engineer Portfolio, Akash Yaduwanshi Portfolio, Portfolio in Indore, AI Engineer in Indore, ML Engineer in Indore, Machine Learning in Indore, LLM Engineer, Multi-Agent Systems, AI Researcher, Tech Portfolio" },
+      { name: "keywords", content: "Akash Yaduwanshi, AI Engineer Portfolio, Akash Yaduwanshi Portfolio, Portfolio in Indore, AI Engineer in Indore, ML Engineer in Indore, Machine Learning in Indore, LLM Engineer, Multi-Agent Systems, AI Researcher, Tech Portfolio, Software Developer in Indore, Web Developer, Programmer, Coder, React Developer, Python Developer, Freelance Developer Indore, IT Student Indore, Software Engineer Portfolio" },
       { name: "author", content: "Akash Yaduwanshi" },
       { name: "robots", content: "index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" },
       { name: "language", content: "English" },
