@@ -1,0 +1,150 @@
+{
+  "hero": {
+    "name": "Akash Yaduwanshi",
+    "role": "AI Engineer",
+    "headlineL1": "Architecting the",
+    "headlineL2": "autonomous future",
+    "description": "Travel through the architecture of an AI engineer's mind. An interactive cinematic neural experience."
+  },
+  "aboutMe": {
+    "paragraphs": [
+      "I am an aspiring AI Engineer and Machine Learning researcher passionate about designing practical AI applications. My work spans research-oriented projects, intelligent developer tools, customer analytics, and multi-agent systems.",
+      "Focused on representation learning, LLM integration, and scalable system design, I enjoy turning ideas into deployable systems with clean architecture and measurable impact."
+    ]
+  },
+  "social": {
+    "email": "aakashyaduwanshi0470@gmail.com",
+    "github": "https://github.com/unshakensoul17",
+    "linkedin": "https://linkedin.com/in/akash-yaduwanshi-902a3b352"
+  },
+  "featuredProjects": [
+    {
+      "id": "proj-1",
+      "title": "Sentinel Flow",
+      "tech": "TYPESCRIPT / SQLITE / AI",
+      "desc": "AI Code Intelligence System mapping codebases into interactive knowledge graphs with dual-path AI routing.",
+      "github": "https://github.com/unshakensoul17/Sentinel-Flow",
+      "live": "https://marketplace.visualstudio.com/items?itemName=UnshakenSoul.sentinel-flow-extension",
+      "image": "/assets/sentinel_flow_ui.png"
+    },
+    {
+      "id": "proj-2",
+      "title": "PhantmOS v3.0",
+      "tech": "PYTHON / FASTAPI / DOCKER",
+      "desc": "Autonomous Multi-Agent Job Engine. Discovers remote jobs, scores relevance, and tailors applications using LLMs.",
+      "github": "https://github.com/unshakensoul17/PhantmOS",
+      "live": "https://unshakensou17-phantmos.hf.space",
+      "image": "/assets/phantmos_ui.png"
+    },
+    {
+      "id": "proj-3",
+      "title": "Reasoning Bottlenecks",
+      "tech": "PYTORCH / TRANSFORMERS",
+      "desc": "Implemented slot-based reasoning bottlenecks in small Transformers, improving mean accuracy on the SCAN benchmark from 0.55 to 0.71.",
+      "github": "https://github.com/unshakensoul17/reasoning-bottlenecks-scan",
+      "live": "https://github.com/unshakensoul17/reasoning-bottlenecks-scan/blob/main/report/Inducing%20Compositional%20Reasoning%20via%20Architectural%20Bottlenecks%20in%20Tiny%20Transformers-1.pdf",
+      "image": "/assets/deep_scan_ui.png"
+    },
+    {
+      "id": "proj-4",
+      "title": "DSRA",
+      "tech": "PYTHON / RAG / VECTOR DB",
+      "desc": "Deep Scientific Research Agent. Autonomous parsing and synthesis of dense scientific literature into actionable intelligence.",
+      "github": "https://github.com/unshakensoul17/DSRA-Deep_Scientific_Research_Agent",
+      "live": "",
+      "image": "/assets/dsra_ui.png"
+    }
+  ],
+  "allProjects": [
+    {
+      "title": "Sentinel Flow",
+      "subtitle": "AI-Powered Codebase Intelligence",
+      "desc": "A VS Code extension that transforms complex codebases into an interactive, AI-powered knowledge graph. It provides deep architectural insights, real-time dependency tracking, and intelligent code analysis directly within the editor.",
+      "tech": ["TypeScript", "React", "VS Code API", "Tree-sitter", "Groq", "Gemini"],
+      "github": "https://github.com/unshakensoul17/Sentinel-Flow",
+      "live": "https://marketplace.visualstudio.com/items?itemName=UnshakenSoul.sentinel-flow-extension"
+    },
+    {
+      "title": "ORA (Outfit Rental Assistant)",
+      "subtitle": "Digital OS for Fashion Rentals",
+      "desc": "A Vertical SaaS platform and B2C marketplace that digitizes operations for unorganized fashion rental boutiques, bridging the gap between online discovery and in-store verification via a QR-based offline attribution system.",
+      "tech": ["NestJS", "Prisma", "PostgreSQL", "React Native", "Next.js", "Meilisearch"],
+      "github": "https://github.com/unshakensoul17/Ora",
+      "live": "https://ora-user-web.vercel.app/"
+    },
+    {
+      "title": "PhantmOS",
+      "subtitle": "Autonomous Multi-Agent Job Application Engine",
+      "desc": "A completely autonomous command center designed to discover remote opportunities, score them against user résumés using semantic AI, and execute applications via an LLM waterfall. Fires off cold emails on autopilot.",
+      "tech": ["Python", "FastAPI", "NextJS", "LLMs", "CrewAI", "Vector DBs"],
+      "github": "https://github.com/unshakensoul17/PhantmOS",
+      "live": "https://unshakensou17-phantmos.hf.space/"
+    },
+    {
+      "title": "Connect Hub",
+      "subtitle": "Real-time Campus Collaboration Platform",
+      "desc": "A modern, gamified campus platform built for students to share notes, ask questions, and collaborate with instant, typo-tolerant search capabilities. Features real-time Q&A forums and leaderboards.",
+      "tech": ["Next.js 16", "Supabase", "Meilisearch", "Tailwind CSS", "Radix UI"],
+      "github": "https://github.com/unshakensoul17/connect-hub",
+      "live": "https://connect-hub-sigma.vercel.app/"
+    },
+    {
+      "title": "Reasoning Bottlenecks",
+      "subtitle": "AI Research on Compositional Reasoning",
+      "desc": "A systematic experimental research study evaluating whether architectural constraints (bottlenecks) can induce compositional generalization in small (5–10M parameter) Transformer models using the SCAN benchmark.",
+      "tech": ["PyTorch", "Transformers", "Python", "ML Research"],
+      "github": "https://github.com/unshakensoul17/reasoning-bottlenecks-scan",
+      "live": "https://github.com/unshakensoul17/reasoning-bottlenecks-scan/blob/main/report/Inducing%20Compositional%20Reasoning%20via%20Architectural%20Bottlenecks%20in%20Tiny%20Transformers-1.pdf"
+    },
+    {
+      "title": "SmartCart Segmentation",
+      "subtitle": "Unsupervised Machine Learning Pipeline",
+      "desc": "An end-to-end unsupervised learning pipeline that processes customer demographic and behavioral data to uncover distinct purchasing segments. Uses PCA, K-Means, and Agglomerative Clustering.",
+      "tech": ["Python", "Pandas", "Scikit-Learn", "Matplotlib", "Seaborn"],
+      "github": "https://github.com/unshakensoul17/SmartCart-Customer-Segmentation",
+      "live": ""
+    },
+    {
+      "title": "DSRA",
+      "subtitle": "Deep Scientific Research Agent",
+      "desc": "An advanced autonomous agent built to navigate, parse, and synthesize dense scientific literature into actionable intelligence.",
+      "tech": ["Python", "LLMs", "RAG", "Vector Databases"],
+      "github": "https://github.com/unshakensoul17/DSRA-Deep_Scientific_Research_Agent",
+      "live": ""
+    },
+    {
+      "title": "Brevity Bot",
+      "subtitle": "AI-Powered Summarization Engine",
+      "desc": "A specialized NLP model designed to parse long-form text and generate concise, accurate summaries while preserving core context.",
+      "tech": ["Python", "HuggingFace", "NLP"],
+      "github": "https://github.com/unshakensoul17/BrevityBot",
+      "live": ""
+    }
+  ],
+  "capabilities": [
+    {
+      "title": "Large Language Models",
+      "color": "#9B5DE5",
+      "desc": "Fine-tuning and deploying foundational models using LoRA and QLoRA. Prompt engineering and optimization for production environments.",
+      "tags": ["PyTorch", "HuggingFace", "Transformers"]
+    },
+    {
+      "title": "RAG Pipelines",
+      "color": "#00E5FF",
+      "desc": "Architecting robust Retrieval-Augmented Generation systems with vector databases for context-aware, enterprise-grade AI applications.",
+      "tags": ["LangChain", "Pinecone", "LlamaIndex"]
+    },
+    {
+      "title": "Autonomous Agents",
+      "color": "#FF0055",
+      "desc": "Designing multi-agent systems and tool-calling architectures for complex reasoning, automated research, and dynamic task execution.",
+      "tags": ["CrewAI", "LangGraph", "Function Calling"]
+    },
+    {
+      "title": "Scalable Systems",
+      "color": "#00FF66",
+      "desc": "Building high-performance APIs and orchestrating containerized microservices to ensure reliable, low-latency AI deployment.",
+      "tags": ["FastAPI", "Docker", "Redis"]
+    }
+  ]
+}

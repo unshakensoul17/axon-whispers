@@ -1,12 +1,14 @@
 import { useEffect, useState, useRef, useMemo, useCallback } from "react";
+import { Link } from '@tanstack/react-router';
 import { Canvas, useFrame, extend } from "@react-three/fiber";
 import { OrbitControls, Sphere, Html, shaderMaterial, Instances, Instance, RoundedBox, Text, Billboard } from "@react-three/drei";
 import { EffectComposer, Bloom } from "@react-three/postprocessing";
 import * as THREE from "three";
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { Terminal, Brain, Cpu, Flame, Box, Zap, Network, Sparkles, MessageSquare, Layers, Eye, Database, Code } from 'lucide-react';
-import { SmokeBlast, NeonDust, BlackholeBomb, HyperWarp, MatrixRain, CosmicVortex, ImplosionRing, ShatteredGlass, GlitchBlocks, GridSnap } from './Transitions';
+import { Terminal, Brain, Cpu, Flame, Box, Zap, Network, Sparkles, MessageSquare, Layers, Eye, Database, Code, Github, ExternalLink, Linkedin, Mail, FileText } from 'lucide-react';
+import { ImplosionRing, ShatteredGlass } from './Transitions';
+import contentData from '../../data/content.json';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -377,15 +379,17 @@ function OrbitingCardItem({ proj, i, dnaHeight, dnaRadius, dnaLoops, cardYSpacin
   const [isShattering, setIsShattering] = useState(false);
 
   useEffect(() => {
+    if (!isActive && wasActive.current) {
+      wasActive.current = false;
+      setIsShattering(true);
+      wasShattering.current = true;
+      const timer = setTimeout(() => setIsShattering(false), 1200);
+      return () => clearTimeout(timer);
+    }
     if (isActive) {
       wasActive.current = true;
       setIsShattering(false);
       wasShattering.current = false;
-    } else if (wasActive.current) {
-      wasActive.current = false;
-      setIsShattering(true);
-      wasShattering.current = true;
-      setTimeout(() => setIsShattering(false), 1200);
     }
   }, [isActive]);
 
@@ -432,9 +436,9 @@ function OrbitingCardItem({ proj, i, dnaHeight, dnaRadius, dnaLoops, cardYSpacin
         _sv.set(1, 1, 1);
         cardRef.current.scale.lerp(_sv, 0.08);
         if (glassMaterialRef.current) {
-          glassMaterialRef.current.opacity = THREE.MathUtils.lerp(glassMaterialRef.current.opacity, 1, 0.05);
-          glassMaterialRef.current.emissiveIntensity = THREE.MathUtils.lerp(glassMaterialRef.current.emissiveIntensity, 0.15, 0.05);
-          if (glassMaterialRef.current.opacity > 0.95) glassMaterialRef.current.transparent = false;
+          glassMaterialRef.current.opacity = THREE.MathUtils.lerp(glassMaterialRef.current.opacity, 0.35, 0.05);
+          glassMaterialRef.current.emissiveIntensity = THREE.MathUtils.lerp(glassMaterialRef.current.emissiveIntensity, 0.0, 0.05);
+          glassMaterialRef.current.transparent = true;
         }
         if (accentRef.current) {
           accentRef.current.opacity = THREE.MathUtils.lerp(accentRef.current.opacity, 1, 0.05);
@@ -471,91 +475,85 @@ function OrbitingCardItem({ proj, i, dnaHeight, dnaRadius, dnaLoops, cardYSpacin
       >
         {isActive && (
           <group>
-            {transitionType === 'smoke-blast' && <SmokeBlast color={themeColor} />}
-            {transitionType === 'neon-dust' && <NeonDust color={themeColor} />}
-            {transitionType === 'blackhole-bomb' && <BlackholeBomb color={themeColor} />}
-            {transitionType === 'glitch-blocks' && <GlitchBlocks color={themeColor} />}
-            {transitionType === 'hyper-warp' && <HyperWarp color={themeColor} />}
-            {transitionType === 'grid-snap' && <GridSnap color={themeColor} />}
             {transitionType === 'implosion-ring' && <ImplosionRing color={themeColor} />}
-            {transitionType === 'matrix-rain' && <MatrixRain color={themeColor} />}
-            {transitionType === 'cosmic-vortex' && <CosmicVortex color={themeColor} />}
           </group>
         )}
 
         {isShattering && <ShatteredGlass color={cardTint} />}
 
         <group visible={!isShattering}>
-          <RoundedBox args={[3.8, 2.8, 0.05]} radius={0.15} smoothness={4}>
+          <RoundedBox args={[4.2, 3.2, 0.15]} radius={0.15} smoothness={4}>
             <meshPhysicalMaterial
               ref={glassMaterialRef}
-              color={cardTint}
-              emissive={cardTint}
-              emissiveIntensity={0.15}
-              transmission={0.92}
-              opacity={1}
-              metalness={0.4}
-              roughness={0.2}
-              ior={1.5}
-              thickness={0.5}
+              color="#000000"
+              emissive="#000000"
+              emissiveIntensity={0.0}
+              transparent={true}
+              opacity={0.35}
+              metalness={0.7}
+              roughness={0.1}
+              depthWrite={false}
+              clearcoat={1.0}
+              clearcoatRoughness={0.05}
             />
           </RoundedBox>
 
           {/* Inner Fluid Glass Ripple Plane */}
           <mesh 
-            position={[0, 0, 0.03]}
+            position={[0, 0, 0.08]}
             onPointerMove={(e) => {
               if (e.uv) mouseUv.current.set(e.uv.x, e.uv.y);
             }}
           >
-            <planeGeometry args={[3.7, 2.7, 1, 1]} />
+            <planeGeometry args={[4.0, 3.0, 1, 1]} />
             <waterRippleMaterial ref={rippleMaterialRef} uColor={new THREE.Color(cardTint)} transparent depthWrite={false} blending={THREE.AdditiveBlending} />
           </mesh>
 
           {/* Top Edge Glow */}
-          <mesh position={[0, 1.38, 0.06]}>
-            <planeGeometry args={[3.4, 0.03]} />
-            <meshBasicMaterial color={cardTint} transparent opacity={0.8} />
+          <mesh position={[0, 1.58, 0.08]}>
+            <planeGeometry args={[3.8, 0.03]} />
+            <meshBasicMaterial color={cardTint} transparent opacity={0.6} />
           </mesh>
 
           {/* Side Accent */}
-          <mesh position={[accentX, 0, 0.06]}>
-            <planeGeometry args={[0.04, 2.0]} />
+          <mesh position={[isLeft ? 2.1 : -2.1, 0, 0.08]}>
+            <planeGeometry args={[0.04, 2.4]} />
             <meshBasicMaterial ref={accentRef} color={themeColor} transparent opacity={1} />
           </mesh>
         </group>
 
-        <Html transform position={[0, 0, 0.1]} distanceFactor={2.5} center className={isActive ? 'opacity-0 transition-opacity duration-700 pointer-events-none' : 'opacity-100 transition-opacity duration-300'}>
+        <Html transform position={[0, 0, 0.16]} distanceFactor={2.5} center className={isActive ? 'opacity-0 transition-opacity duration-700 pointer-events-none' : 'opacity-100 transition-opacity duration-300'}>
           <div
             onClick={(e) => {
               e.stopPropagation();
               setActiveProject(proj.id);
             }}
-            className={`w-[400px] text-left pointer-events-auto cursor-pointer select-none transition-all duration-700 hover:scale-[1.02] group ${isLeft ? 'pr-2' : 'pl-2'}`}
+            className={`w-[440px] h-[340px] p-6 flex flex-col justify-between pointer-events-auto cursor-pointer select-none transition-all duration-700 hover:scale-[1.02] group relative overflow-hidden`}
           >
-            <div className="flex items-center gap-3 mb-4 opacity-90 group-hover:opacity-100 transition-opacity duration-300">
-              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: cardTint, boxShadow: `0 0 12px ${cardTint}` }} />
-              <div className="flex flex-col">
-                <p className="text-xs font-mono uppercase tracking-[0.3em] font-bold drop-shadow-md" style={{ color: cardTint }}>
-                  {proj.tech.split(' / ')[0]}
-                </p>
-                <p className="text-[10px] font-mono text-white/50 tracking-widest mt-0.5 drop-shadow-md">SYS_ID: [{proj.id.toUpperCase()}]</p>
-              </div>
+            {/* Circuit Background SVG */}
+            <div className="absolute inset-0 opacity-20 pointer-events-none transition-opacity duration-500 group-hover:opacity-100" 
+                 style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'%3E%3Cpath d='M10 10l10 10v20l-10 10m80-40l-10 10v20l10 10M30 30h40M50 10v80M20 70h20M70 70h20M30 50h10M60 50h10' stroke='rgba(255,255,255,0.8)' fill='none' stroke-width='0.5'/%3E%3Ccircle cx='20' cy='40' r='1.5' fill='rgba(255,255,255,0.8)'/%3E%3Ccircle cx='80' cy='60' r='1.5' fill='rgba(255,255,255,0.8)'/%3E%3C/svg%3E")`, backgroundSize: '60px 60px' }}>
             </div>
 
-            <h3 className="text-5xl font-semibold text-white mb-4 tracking-wider drop-shadow-[0_4px_8px_rgba(0,0,0,0.8)] group-hover:drop-shadow-[0_0_15px_rgba(255,255,255,0.4)] transition-all duration-500">
-              {proj.title}
-            </h3>
-
-            <div className="relative pl-4 border-l-2 border-white/20 group-hover:border-white/50 transition-colors duration-300">
-              <p className="text-sm font-medium text-white/90 leading-relaxed max-w-[360px] drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] group-hover:text-white transition-colors duration-300">
+            {/* Center Content: Title & Desc */}
+            <div className="flex flex-col items-center justify-center flex-1 relative z-10 mt-2">
+              <h3 className="text-[36px] font-black uppercase text-[#F8FAFC] tracking-[0.1em] drop-shadow-[0_4px_12px_rgba(0,0,0,0.6)] group-hover:drop-shadow-[0_0_20px_rgba(255,255,255,0.4)] transition-all duration-500 mb-2 text-center leading-tight">
+                {proj.title}
+              </h3>
+              <p className="text-[14px] font-medium text-[#E2E8F0] leading-relaxed max-w-[380px] drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] text-center opacity-90 group-hover:opacity-100 transition-opacity duration-300">
                 {proj.desc}
               </p>
             </div>
 
-            <div className="mt-8 flex items-center gap-4 opacity-30 group-hover:opacity-100 transition-opacity duration-500">
-              <div className="h-[1px] flex-1" style={{ backgroundImage: `linear-gradient(to right, ${cardTint}, transparent)` }} />
-              <div className="text-[9px] font-mono tracking-[0.4em] text-white/70 bg-white/5 px-2 py-1 rounded border border-white/10 group-hover:border-white/30">ACCESS_NODE</div>
+            {/* Bottom Bar: Knowledge Graph Icon & Status */}
+            <div className="flex flex-col items-center justify-end relative z-10 mt-2 mb-1">
+              <Network size={32} color="#00BBF9" className="opacity-70 group-hover:opacity-100 transition-opacity duration-300 drop-shadow-[0_0_15px_rgba(0,187,249,0.9)] mb-4" />
+              <div className="w-full flex justify-between px-2 items-center">
+                <span className="text-xs font-mono font-bold tracking-widest text-white bg-[#9B5DE5] px-4 py-2 rounded-full uppercase animate-pulse shadow-[0_0_20px_#9B5DE5] border border-[#F15BB5]/50">
+                  Click to Expand
+                </span>
+                <span className="text-[9px] font-mono tracking-widest text-white/50 bg-black/30 px-2 py-1 rounded border border-white/10 group-hover:border-white/30 transition-colors duration-300">V1.0 - [ALPHA]</span>
+              </div>
             </div>
           </div>
         </Html>
@@ -703,7 +701,7 @@ function MainStage({ scrollProgress, scrollRef, setActiveProject, activeProject,
   const finaleEffect = 'Core Re-Assembly';
 
   const isAboutActive = scrollProgress > 0.1 && scrollProgress <= 0.2;
-  const isTechStackActive = finaleEffect === 'Core Re-Assembly' && scrollProgress > 0.8 && scrollProgress < 0.95;
+  const isTechStackActive = scrollProgress > 0.8 && scrollProgress < 0.95;
   const isContactActive = scrollProgress >= 0.95;
 
   useFrame((state) => {
@@ -719,7 +717,7 @@ function MainStage({ scrollProgress, scrollRef, setActiveProject, activeProject,
       let targetX = 0;
       if (_isHero) targetX = 2.5;
       else if (_isAbout) targetX = 2.5;
-      else if (_isTech) targetX = 2.5;
+      else if (_isTech) targetX = 0;
       else if (_isContact) targetX = 0;
 
       stageRef.current.position.x = THREE.MathUtils.lerp(stageRef.current.position.x, targetX, 0.05);
@@ -739,34 +737,7 @@ function MainStage({ scrollProgress, scrollRef, setActiveProject, activeProject,
       let targetRotX = 0;
       let targetRotZ = 0;
 
-      if (finaleT > 0 && !isHero) {
-        if (finaleEffect === 'Warp Tunnel') {
-          targetZ = finaleT * 18; 
-          targetScaleX = 1 + finaleT * 3; 
-          targetScaleZ = 1 + finaleT * 3;
-        } else if (finaleEffect === 'Nebula') {
-          targetScaleX = 1 + finaleT * 12; 
-          targetScaleZ = 1 + finaleT * 12;
-        } else if (finaleEffect === 'Magnetic Fluid') {
-          targetRotZ = state.pointer.x * finaleT * 1.5;
-          targetRotX = -state.pointer.y * finaleT * 1.5;
-        } else if (finaleEffect === 'Singularity') {
-          targetScaleX = Math.max(0.001, 1 - finaleT * 2);
-          targetScaleZ = Math.max(0.001, 1 - finaleT * 2);
-          targetScaleY = 1 + finaleT * 5;
-        } else if (finaleEffect === 'Quantum Glitch') {
-          targetRotX = (Math.random() - 0.5) * finaleT * 0.8;
-          targetRotZ = (Math.random() - 0.5) * finaleT * 0.8;
-          targetScaleX = 1 + (Math.random() - 0.5) * finaleT * 3;
-          targetScaleZ = 1 + (Math.random() - 0.5) * finaleT * 3;
-        } else if (finaleEffect === 'Cyber-Tornado') {
-          targetRotationY += state.clock.getElapsedTime() * 15 * finaleT;
-          targetScaleX = 1 + finaleT * 1.5;
-          targetScaleZ = 1 + finaleT * 1.5;
-        } else if (finaleEffect === 'Ascension') {
-          targetYOffset = finaleT * 40;
-        }
-      }
+      // finaleEffect 'Core Re-Assembly' handles no specific transform overrides in this block.
 
       stageRef.current.position.y = THREE.MathUtils.lerp(stageRef.current.position.y, targetY + targetYOffset, 0.05);
       stageRef.current.position.z = THREE.MathUtils.lerp(stageRef.current.position.z, targetZ, 0.05);
@@ -791,10 +762,6 @@ function MainStage({ scrollProgress, scrollRef, setActiveProject, activeProject,
         visible={(finaleEffect === 'Core Re-Assembly' && scrollProgress > 0.8) || isContactActive}
         positionY={-(dnaHeight / 2)}
         shrinkToDot={isContactActive}
-      />
-      <OrbitingTechStack
-        visible={isTechStackActive}
-        positionY={-(dnaHeight / 2)}
       />
 
       <DNAStrand
@@ -823,40 +790,83 @@ function MainStage({ scrollProgress, scrollRef, setActiveProject, activeProject,
   );
 }
 
-const PROJECTS = [
-  {
-    id: "proj-1",
-    title: "Sentinel Flow",
-    tech: "TYPESCRIPT / SQLITE / AI",
-    desc: "AI Code Intelligence System mapping codebases into interactive knowledge graphs with dual-path AI routing.",
-    link: "https://marketplace.visualstudio.com/items?itemName=UnshakenSoul.sentinel-flow-extension",
-    image: "/assets/sentinel_flow_ui.png"
-  },
-  {
-    id: "proj-2",
-    title: "PhantmOS v3.0",
-    tech: "PYTHON / FASTAPI / DOCKER",
-    desc: "Autonomous Multi-Agent Job Engine. Discovers remote jobs, scores relevance, and tailors applications using LLMs.",
-    link: "https://unshakensou17-phantmos.hf.space",
-    image: "/assets/phantmos_ui.png"
-  },
-  {
-    id: "proj-3",
-    title: "Reasoning Bottlenecks",
-    tech: "PYTORCH / TRANSFORMERS",
-    desc: "Implemented slot-based reasoning bottlenecks in small Transformers, improving mean accuracy on the SCAN benchmark from 0.55 to 0.71.",
-    link: "https://github.com/unshakensoul17/reasoning-bottlenecks-scan",
-    image: "/assets/deep_scan_ui.png"
-  },
-  {
-    id: "proj-4",
-    title: "SmartCart Clustering",
-    tech: "PYTHON / SCIKIT-LEARN",
-    desc: "Unsupervised learning pipeline identifying actionable customer segments using PCA dimensionality reduction and K-Means.",
-    link: "https://github.com/unshakensoul17/SmartCart-Customer-Segmentation",
-    image: "/assets/smartcart_clustering_ui.png"
-  }
-];
+const PROJECTS = contentData.featuredProjects;
+
+export function BackgroundConstellation() {
+  const groupRef = useRef<THREE.Group>(null);
+  const mouseUv = useRef(new THREE.Vector2());
+
+  const { points, lines } = useMemo(() => {
+    const p = [];
+    const count = 1500; // Dense constellation
+    const radius = 35; // Spread wide to cover screen
+
+    for (let i = 0; i < count; i++) {
+      const theta = Math.random() * Math.PI * 2;
+      const phi = Math.acos(Math.random() * 2 - 1);
+      const r = Math.cbrt(Math.random()) * radius;
+
+      const x = r * Math.sin(phi) * Math.cos(theta);
+      const y = r * Math.sin(phi) * Math.sin(theta);
+      const z = r * Math.cos(phi);
+      
+      // Push back so it doesn't clip the front DNA and cards
+      p.push(new THREE.Vector3(x, y, z - 15)); 
+    }
+
+    const l = [];
+    for (let i = 0; i < count; i++) {
+      for (let j = i + 1; j < count; j++) {
+        if (p[i].distanceTo(p[j]) < 2.5) {
+          l.push(p[i].x, p[i].y, p[i].z);
+          l.push(p[j].x, p[j].y, p[j].z);
+        }
+      }
+    }
+
+    const posArray = new Float32Array(p.length * 3);
+    for (let i = 0; i < p.length; i++) {
+      posArray[i * 3] = p[i].x;
+      posArray[i * 3 + 1] = p[i].y;
+      posArray[i * 3 + 2] = p[i].z;
+    }
+
+    return { points: posArray, lines: new Float32Array(l) };
+  }, []);
+
+  useFrame((state) => {
+    if (!groupRef.current) return;
+    
+    groupRef.current.rotation.y += 0.0005;
+    groupRef.current.rotation.x += 0.0002;
+
+    const mx = (state.pointer.x * Math.PI) / 15;
+    const my = (state.pointer.y * Math.PI) / 15;
+    
+    mouseUv.current.x = THREE.MathUtils.lerp(mouseUv.current.x, mx, 0.05);
+    mouseUv.current.y = THREE.MathUtils.lerp(mouseUv.current.y, my, 0.05);
+
+    groupRef.current.position.x = mouseUv.current.x * 3.0;
+    groupRef.current.position.y = mouseUv.current.y * 3.0;
+  });
+
+  return (
+    <group ref={groupRef}>
+      <points>
+        <bufferGeometry>
+          <bufferAttribute attach="attributes-position" args={[points, 3]} />
+        </bufferGeometry>
+        <pointsMaterial color="#00BBF9" size={0.06} transparent opacity={0.6} sizeAttenuation={true} blending={THREE.AdditiveBlending} depthWrite={false} />
+      </points>
+      <lineSegments>
+        <bufferGeometry>
+          <bufferAttribute attach="attributes-position" args={[lines, 3]} />
+        </bufferGeometry>
+        <lineBasicMaterial color="#9B5DE5" transparent opacity={0.15} blending={THREE.AdditiveBlending} depthWrite={false} />
+      </lineSegments>
+    </group>
+  );
+}
 
 export default function Experience() {
   const [scrollProgress, setScrollProgress] = useState(0);
@@ -901,13 +911,8 @@ export default function Experience() {
       },
     });
 
-    // close active project on scroll
-    const onScroll = () => { if (activeProject) setActiveProject(null); };
-    window.addEventListener('scroll', onScroll, { passive: true });
-
     return () => {
       st.kill();
-      window.removeEventListener('scroll', onScroll);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -932,6 +937,8 @@ export default function Experience() {
           <ambientLight intensity={0.5} />
           <directionalLight position={[10, 10, 5]} intensity={1.5} color="#ffffff" />
           <pointLight position={[-10, -10, -5]} intensity={1.5} color="#9B5DE5" />
+
+          <BackgroundConstellation />
 
           {/* Main Orchestrator for Globe/DNA Morphing and Positioning */}
           <MainStage scrollProgress={scrollProgress} scrollRef={scrollRef} setActiveProject={setActiveProject} activeProject={activeProject} transitionType={transitionType} />
@@ -961,33 +968,55 @@ export default function Experience() {
           <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M4 12L10 6V18L16 12" stroke="#9B5DE5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
-          <span className="text-xl tracking-wider text-white font-display">
-            <span className="font-bold">AKASH</span> <span className="font-light">YADUWANSHI</span>
+          <span className="text-2xl md:text-3xl tracking-wider text-white font-display">
+            <span className="font-bold">{contentData.hero.name.split(' ')[0].toUpperCase()}</span> <span className="font-light">{contentData.hero.name.split(' ').slice(1).join(' ').toUpperCase()}</span>
           </span>
         </div>
 
-        <div className="hidden md:flex items-center gap-8 text-[11px] tracking-[0.2em] uppercase text-white/50 font-mono">
+        <div className="hidden md:flex items-center gap-8 text-[13px] tracking-[0.2em] uppercase text-white/50 font-mono">
           <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="hover:text-white transition-colors cursor-pointer">Core</button>
           <button onClick={() => window.scrollTo({ top: window.innerHeight * 2.5, behavior: 'smooth' })} className="hover:text-white transition-colors cursor-pointer">Projects</button>
           <button onClick={() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' })} className="hover:text-white transition-colors cursor-pointer">Network</button>
+          <Link to="/projects" className="hover:text-white transition-colors cursor-pointer text-[#9B5DE5]">All Projects</Link>
         </div>
 
         <button
           onClick={() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' })}
-          className="rounded-full bg-[#9B5DE5]/10 border border-[#9B5DE5]/30 px-6 py-2.5 text-[11px] tracking-[0.2em] uppercase font-mono text-[#9B5DE5] transition-all hover:bg-[#9B5DE5] hover:text-black shadow-[0_0_15px_rgba(0,229,255,0.15)]"
+          className="rounded-full bg-[#9B5DE5]/10 border border-[#9B5DE5]/30 px-8 py-3 text-[13px] tracking-[0.2em] uppercase font-mono text-[#9B5DE5] transition-all hover:bg-[#9B5DE5] hover:text-black shadow-[0_0_15px_rgba(0,229,255,0.15)] font-bold"
         >
           Initiate
         </button>
       </nav>
 
-      {/* Scroll Progress Indicator */}
+      {/* Scroll Progress Indicator & Timeline */}
       <div className="fixed left-6 md:left-12 top-1/2 -translate-y-1/2 h-[40vh] w-[2px] bg-white/10 rounded-full z-50">
         <div
           className="absolute top-0 left-0 w-full bg-gradient-to-b from-[#9B5DE5] to-[#b026ff] rounded-full transition-all duration-200"
           style={{ height: `${Math.max(0, scrollProgress * 100)}%` }}
         />
+        
+        {/* Section Markers */}
+        {[
+          { label: 'Intro', pos: 0, active: scrollProgress < 0.1 },
+          { label: 'About Me', pos: 15, active: scrollProgress >= 0.1 && scrollProgress < 0.25 },
+          { label: 'Projects', pos: 50, active: scrollProgress >= 0.25 && scrollProgress < 0.75 },
+          { label: 'Capabilities', pos: 85, active: scrollProgress >= 0.75 && scrollProgress < 0.95 },
+          { label: 'Contact', pos: 100, active: scrollProgress >= 0.95 }
+        ].map((sec) => (
+          <div key={sec.label} className="absolute left-1/2 -translate-x-1/2" style={{ top: `${sec.pos}%` }}>
+            {/* Tiny dot on the line */}
+            <div className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full transition-all duration-300 z-0 ${sec.active ? 'bg-transparent' : 'bg-[#07050F] border border-white/30'}`} />
+            
+            {/* Label */}
+            <span className={`absolute left-4 top-1/2 -translate-y-1/2 whitespace-nowrap text-[9px] md:text-[10px] font-mono tracking-[0.2em] uppercase transition-all duration-500 ${sec.active ? 'text-[#9B5DE5] font-bold opacity-100 translate-x-2' : 'text-white/30 font-medium opacity-50 translate-x-0'}`}>
+              {sec.label}
+            </span>
+          </div>
+        ))}
+
+        {/* The traveling glow dot */}
         <div
-          className="absolute left-1/2 -translate-x-1/2 h-3 w-3 rounded-full bg-[#9B5DE5] shadow-[0_0_12px_#9B5DE5] transition-all duration-200"
+          className="absolute left-1/2 -translate-x-1/2 h-3 w-3 rounded-full bg-[#9B5DE5] shadow-[0_0_12px_#9B5DE5] transition-all duration-200 z-10"
           style={{ top: `calc(${Math.max(0, scrollProgress * 100)}% - 6px)` }}
         />
       </div>
@@ -1001,15 +1030,15 @@ export default function Experience() {
         {/* Fixed Hero Overlay */}
         <div className="fixed inset-0 flex flex-col justify-center px-16 md:px-32 max-w-4xl pt-20 pointer-events-none">
           <div className={scrollProgress <= 0.1 ? "pointer-events-auto" : "pointer-events-none"} style={{ opacity: Math.max(0, 1 - (scrollProgress / 0.1)), transition: 'opacity 0.1s' }}>
-            <span className="text-[#9B5DE5] font-mono text-[10px] md:text-[11px] tracking-[0.3em] uppercase mb-6 block">
-              Akash Yaduwanshi • AI Engineer
+            <span className="text-[#9B5DE5] font-mono text-xs md:text-sm tracking-[0.3em] uppercase mb-6 block font-bold">
+              {contentData.hero.name} • {contentData.hero.role}
             </span>
             <h1 className="text-5xl md:text-7xl font-display font-bold tracking-tight text-white mb-6 leading-none">
-              Engineering intelligence <br />
-              at the synaptic level
+              {contentData.hero.headlineL1} <br />
+              {contentData.hero.headlineL2}
             </h1>
             <p className="text-xl md:text-2xl font-light text-white/50 leading-relaxed mb-12 max-w-2xl">
-              Scroll down to explore the orbital project network.
+              Scroll to explore
             </p>
           </div>
         </div>
@@ -1028,38 +1057,63 @@ export default function Experience() {
             <h2 className="text-4xl md:text-5xl font-display font-bold tracking-tight text-white mb-6">
               Engineering Mindset
             </h2>
-            <p className="text-lg font-light text-white/60 leading-relaxed mb-6">
-              I am an aspiring AI Engineer and Machine Learning researcher passionate about designing practical AI applications. My work spans research-oriented projects, intelligent developer tools, customer analytics, and multi-agent systems.
-            </p>
-            <p className="text-lg font-light text-white/60 leading-relaxed">
-              Focused on representation learning, LLM integration, and scalable system design, I enjoy turning ideas into deployable systems with clean architecture and measurable impact.
-            </p>
+            {contentData.aboutMe.paragraphs.map((p, i) => (
+              <p key={i} className={`text-lg font-light text-white/60 leading-relaxed ${i === 0 ? 'mb-6' : ''}`}>
+                {p}
+              </p>
+            ))}
           </div>
         </div>
 
-        {/* Fixed Tech Stack Overlay */}
+        {/* Fixed Projects Section Title Overlay */}
         <div
-          className="fixed inset-0 flex flex-col justify-center px-16 md:px-32 max-w-2xl pointer-events-none"
+          className="fixed top-32 px-16 md:px-32 max-w-2xl pointer-events-none"
+          style={{
+            opacity: (scrollProgress > 0.25 && scrollProgress <= 0.75 && !activeProject) ? 1 : 0,
+            transform: `translateY(${(scrollProgress > 0.25 && scrollProgress <= 0.75 && !activeProject) ? '0px' : '-20px'})`,
+            transition: 'all 0.5s ease-out'
+          }}
+        >
+          <span className="text-xs md:text-sm font-mono text-[#9B5DE5] mb-2 block uppercase tracking-[0.3em] font-bold">Selected Works</span>
+          <h2 className="text-3xl md:text-4xl font-display font-bold tracking-tight text-white/90 drop-shadow-[0_0_10px_rgba(255,255,255,0.1)]">
+            Orbital Archives
+          </h2>
+        </div>
+
+        {/* Fixed Capabilities Grid Overlay */}
+        <div
+          className="fixed inset-0 flex flex-col justify-center items-center px-6 md:px-12 pointer-events-none"
           style={{
             opacity: (scrollProgress > 0.75 && scrollProgress < 0.95) ? 1 : 0,
             transform: `translateY(${(scrollProgress > 0.75 && scrollProgress < 0.95) ? '0px' : '20px'})`,
             transition: 'all 0.5s ease-out'
           }}
         >
-          <div className={(scrollProgress > 0.75 && scrollProgress < 0.95) ? "pointer-events-auto" : "pointer-events-none"}>
-            <span className="text-[10px] md:text-[11px] font-mono text-[#9B5DE5] mb-3 block uppercase tracking-[0.3em]">Core Architecture</span>
-            <h2 className="text-4xl md:text-6xl font-display font-bold tracking-tight text-white mb-6">
-              Neural Tech Stack
+          <div className={`w-full max-w-5xl ${(scrollProgress > 0.75 && scrollProgress < 0.95) ? "pointer-events-auto" : "pointer-events-none"}`}>
+            <span className="text-xs md:text-sm font-mono text-[#9B5DE5] mb-2 block uppercase tracking-[0.3em] font-bold text-center md:text-left">Core Competencies</span>
+            <h2 className="text-4xl md:text-5xl font-display font-bold tracking-tight text-white mb-10 text-center md:text-left drop-shadow-[0_0_10px_rgba(255,255,255,0.1)]">
+              Engineering Capabilities
             </h2>
-            <p className="text-xl font-light text-white/50 leading-relaxed mb-8">
-              Engineered with an advanced toolkit for deep learning, generative AI, and high-performance neural networks.
-            </p>
-            <a
-              href="#architecture"
-              className="inline-block border border-white/20 px-8 py-3 rounded-full font-mono text-[11px] tracking-[0.2em] uppercase hover:bg-white hover:text-black transition-colors duration-300"
-            >
-              View Architecture
-            </a>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
+
+              {contentData.capabilities.map((cap, idx) => (
+                <div key={idx} className="bg-white/[0.02] border border-white/[0.05] p-6 rounded-2xl backdrop-blur-md hover:bg-white/[0.05] transition-all duration-300 group" style={{ '--hover-border': cap.color } as React.CSSProperties}>
+                  <h3 className="text-white font-display text-xl font-bold mb-3 flex items-center gap-3">
+                    <span className="w-2 h-2 rounded-full" style={{ backgroundColor: cap.color, boxShadow: `0 0 8px ${cap.color}` }}></span>
+                    {cap.title}
+                  </h3>
+                  <p className="text-white/50 font-light text-sm leading-relaxed mb-5">
+                    {cap.desc}
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {cap.tags.map((tag, tIdx) => (
+                      <span key={tIdx} className="px-3 py-1 rounded-full border text-[10px] font-mono transition-colors group-hover:bg-opacity-20" style={{ backgroundColor: `${cap.color}10`, borderColor: `${cap.color}20`, color: cap.color }}>{tag}</span>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -1080,38 +1134,38 @@ export default function Experience() {
               CONNECTION
             </h2>
 
-            <div className="flex gap-6 justify-center">
+            <div className="flex flex-wrap gap-6 justify-center">
               <a
-                href="mailto:aakashyaduwanshi0470@gmail.com"
+                href={`mailto:${contentData.social.email}`}
                 className="group relative overflow-hidden rounded-full border border-white/20 bg-black/40 backdrop-blur-xl px-10 py-5 transition-all hover:border-[#9B5DE5]/50 hover:shadow-[0_0_40px_rgba(0,229,255,0.2)]"
               >
                 <div className="absolute inset-0 bg-gradient-to-r from-[#9B5DE5]/0 via-[#9B5DE5]/10 to-[#9B5DE5]/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700 ease-in-out" />
-                <span className="text-sm tracking-[0.3em] uppercase text-white font-medium">Email</span>
+                <span className="text-sm tracking-[0.3em] uppercase text-white font-medium flex items-center gap-3 relative z-10"><Mail size={18} /> Email</span>
               </a>
 
               <a
-                href="https://github.com/unshakensoul17"
+                href={contentData.social.github}
                 target="_blank" rel="noreferrer"
                 className="group relative overflow-hidden rounded-full border border-white/20 bg-black/40 backdrop-blur-xl px-10 py-5 transition-all hover:border-[#F15BB5]/50 hover:shadow-[0_0_40px_rgba(255,42,0,0.2)]"
               >
                 <div className="absolute inset-0 bg-gradient-to-r from-[#F15BB5]/0 via-[#F15BB5]/10 to-[#F15BB5]/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700 ease-in-out" />
-                <span className="text-sm tracking-[0.3em] uppercase text-white font-medium">GitHub</span>
+                <span className="text-sm tracking-[0.3em] uppercase text-white font-medium flex items-center gap-3 relative z-10"><Github size={18} /> GitHub</span>
               </a>
 
               <a
-                href="https://linkedin.com/in/akash-yaduwanshi-902a3b352"
+                href={contentData.social.linkedin}
                 target="_blank" rel="noreferrer"
                 className="group relative overflow-hidden rounded-full border border-white/20 bg-black/40 backdrop-blur-xl px-10 py-5 transition-all hover:border-[#9B5DE5]/50 hover:shadow-[0_0_40px_rgba(0,229,255,0.2)]"
               >
                 <div className="absolute inset-0 bg-gradient-to-r from-[#9B5DE5]/0 via-[#9B5DE5]/10 to-[#9B5DE5]/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700 ease-in-out" />
-                <span className="text-sm tracking-[0.3em] uppercase text-white font-medium">LinkedIn</span>
+                <span className="text-sm tracking-[0.3em] uppercase text-white font-medium flex items-center gap-3 relative z-10"><Linkedin size={18} /> LinkedIn</span>
               </a>
 
               <a
-                href="mailto:aakashyaduwanshi0470@gmail.com?subject=Requesting%20Resume%20-%20Akash%20Yaduwanshi"
+                href={`mailto:${contentData.social.email}?subject=Requesting%20Resume`}
                 className="group relative overflow-hidden rounded-full border border-white/20 bg-[#9B5DE5]/10 backdrop-blur-xl px-10 py-5 transition-all hover:bg-[#9B5DE5]/20 hover:border-[#9B5DE5] hover:shadow-[0_0_40px_rgba(0,229,255,0.4)]"
               >
-                <span className="text-sm tracking-[0.3em] uppercase text-[#9B5DE5] font-bold">Request Resume</span>
+                <span className="text-sm tracking-[0.3em] uppercase text-[#9B5DE5] font-bold flex items-center gap-3 relative z-10"><FileText size={18} /> Request Resume</span>
               </a>
             </div>
           </div>
@@ -1146,14 +1200,33 @@ export default function Experience() {
             </p>
 
             <div className="flex flex-col gap-6">
-              <a
-                href={selectedProjData?.link}
-                target="_blank" rel="noreferrer"
-                className="group w-fit relative overflow-hidden rounded-full border border-white/20 bg-white/5 backdrop-blur-sm px-8 py-3 transition-all hover:border-[#9B5DE5]/50 hover:shadow-[0_0_20px_rgba(0,229,255,0.2)]"
-              >
-                <div className="absolute inset-0 bg-gradient-to-r from-[#9B5DE5]/0 via-[#9B5DE5]/10 to-[#9B5DE5]/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700 ease-in-out" />
-                <span className="text-[10px] tracking-[0.2em] uppercase text-white font-medium group-hover:text-[#9B5DE5] transition-colors relative z-10">Project Link</span>
-              </a>
+              <div className="flex flex-wrap items-center gap-4">
+                {selectedProjData?.github && (
+                  <a
+                    href={selectedProjData.github}
+                    target="_blank" rel="noreferrer"
+                    className="group w-fit relative overflow-hidden rounded-full border border-white/20 bg-white/5 backdrop-blur-sm px-8 py-3 transition-all hover:border-[#9B5DE5]/50 hover:shadow-[0_0_20px_rgba(155,93,229,0.2)]"
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-r from-[#9B5DE5]/0 via-[#9B5DE5]/10 to-[#9B5DE5]/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700 ease-in-out" />
+                    <span className="text-[10px] tracking-[0.2em] uppercase text-white font-medium group-hover:text-[#9B5DE5] transition-colors relative z-10 flex items-center gap-2">
+                      <Github size={14} /> Source Code
+                    </span>
+                  </a>
+                )}
+
+                {selectedProjData?.live && (
+                  <a
+                    href={selectedProjData.live}
+                    target="_blank" rel="noreferrer"
+                    className="group w-fit relative overflow-hidden rounded-full border border-[#00BBF9]/30 bg-[#00BBF9]/10 backdrop-blur-sm px-8 py-3 transition-all hover:border-[#00BBF9] hover:bg-[#00BBF9]/20 hover:shadow-[0_0_25px_rgba(0,187,249,0.3)]"
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-r from-[#00BBF9]/0 via-[#00BBF9]/20 to-[#00BBF9]/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700 ease-in-out" />
+                    <span className="text-[10px] tracking-[0.2em] uppercase text-[#00BBF9] font-medium group-hover:text-white transition-colors relative z-10 flex items-center gap-2">
+                      <ExternalLink size={14} /> Live Demo
+                    </span>
+                  </a>
+                )}
+              </div>
 
               <button
                 onClick={() => setActiveProject(null)}

@@ -348,7 +348,7 @@ export function ImplosionRing({ color }: { color: string }) {
 
 export function ShatteredGlass({ color = "#ffffff" }: { color?: string }) {
   const pointsRef = useRef<THREE.Points>(null);
-  const count = 100000; // 1 lakh particles
+  const count = 3000; // Optimized for smooth 60fps
 
   const { positions, randoms } = useMemo(() => {
     const pos = new Float32Array(count * 3);
@@ -367,7 +367,7 @@ export function ShatteredGlass({ color = "#ffffff" }: { color?: string }) {
   }, [count]);
 
   const mat = useMemo(() => new THREE.PointsMaterial({
-    size: 0.015,
+    size: 0.04,
     color: color,
     transparent: true,
     opacity: 1.0,
