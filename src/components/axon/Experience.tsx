@@ -997,12 +997,15 @@ export default function Experience() {
           <Link to="/projects" className="hover:text-white transition-colors cursor-pointer text-[#9B5DE5]">All Projects</Link>
         </div>
 
-        <button
-          onClick={() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' })}
-          className="rounded-full bg-[#9B5DE5]/10 border border-[#9B5DE5]/30 px-4 py-2 sm:px-8 sm:py-3 text-[10px] sm:text-[13px] tracking-[0.2em] uppercase font-mono text-[#9B5DE5] transition-all hover:bg-[#9B5DE5] hover:text-black shadow-[0_0_15px_rgba(0,229,255,0.15)] font-bold"
-        >
-          Initiate
-        </button>
+        <div className="flex items-center gap-3 sm:gap-6">
+          <Link to="/projects" className="md:hidden text-[10px] sm:text-[12px] tracking-[0.2em] uppercase text-[#9B5DE5] font-bold hover:text-white transition-colors cursor-pointer">All Projects</Link>
+          <button
+            onClick={() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' })}
+            className="rounded-full bg-[#9B5DE5]/10 border border-[#9B5DE5]/30 px-4 py-2 sm:px-8 sm:py-3 text-[10px] sm:text-[13px] tracking-[0.2em] uppercase font-mono text-[#9B5DE5] transition-all hover:bg-[#9B5DE5] hover:text-black shadow-[0_0_15px_rgba(0,229,255,0.15)] font-bold"
+          >
+            Initiate
+          </button>
+        </div>
       </nav>
 
       {/* Scroll Progress Indicator - Abstract */}
@@ -1025,7 +1028,7 @@ export default function Experience() {
             <div className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full transition-all duration-300 z-0 ${sec.active ? 'bg-transparent' : 'bg-[#07050F] border border-white/30'}`} />
             
             {/* Label */}
-            <span className={`absolute left-4 top-1/2 -translate-y-1/2 whitespace-nowrap text-[9px] md:text-[10px] font-mono tracking-[0.2em] uppercase transition-all duration-500 ${sec.active ? 'text-[#9B5DE5] font-bold opacity-100 translate-x-2' : 'text-white/30 font-medium opacity-50 translate-x-0'}`}>
+            <span className={`absolute right-4 top-1/2 -translate-y-1/2 whitespace-nowrap text-[9px] md:text-[10px] font-mono tracking-[0.2em] uppercase transition-all duration-500 ${sec.active ? 'text-[#9B5DE5] font-bold opacity-100 -translate-x-2' : 'text-white/30 font-medium opacity-50 translate-x-0'}`}>
               {sec.label}
             </span>
           </div>
@@ -1099,7 +1102,7 @@ export default function Experience() {
 
         {/* Fixed Capabilities Grid Overlay */}
         <div
-          className="fixed inset-0 flex flex-col justify-center items-center px-6 md:px-12 pointer-events-none"
+          className="fixed inset-0 flex flex-col justify-center items-center px-4 sm:px-6 md:px-12 pt-16 sm:pt-20 md:pt-0 pointer-events-none"
           style={{
             opacity: (scrollProgress > 0.75 && scrollProgress < 0.95) ? 1 : 0,
             transform: `translateY(${(scrollProgress > 0.75 && scrollProgress < 0.95) ? '0px' : '20px'})`,
@@ -1107,23 +1110,23 @@ export default function Experience() {
           }}
         >
           <div className={`w-full max-w-5xl ${(scrollProgress > 0.75 && scrollProgress < 0.95) ? "pointer-events-auto" : "pointer-events-none"}`}>
-            <span className="text-xs md:text-sm font-mono text-[#9B5DE5] mb-2 block uppercase tracking-[0.3em] font-bold text-center md:text-left">Core Competencies</span>
-            <h2 className="text-4xl md:text-5xl font-display font-bold tracking-tight text-white mb-10 text-center md:text-left drop-shadow-[0_0_10px_rgba(255,255,255,0.1)]">
+            <span className="text-[10px] sm:text-xs md:text-sm font-mono text-[#9B5DE5] mb-1 sm:mb-2 block uppercase tracking-[0.3em] font-bold text-center md:text-left">Core Competencies</span>
+            <h2 className="text-2xl sm:text-4xl md:text-5xl font-display font-bold tracking-tight text-white mb-4 sm:mb-6 md:mb-10 text-center md:text-left drop-shadow-[0_0_10px_rgba(255,255,255,0.1)]">
               Engineering Capabilities
             </h2>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-6 w-full">
 
               {contentData.capabilities.map((cap, idx) => (
-                <div key={idx} className="bg-white/[0.02] border border-white/[0.05] p-6 rounded-2xl backdrop-blur-md hover:bg-white/[0.05] transition-all duration-300 group" style={{ '--hover-border': cap.color } as React.CSSProperties}>
-                  <h3 className="text-white font-display text-xl font-bold mb-3 flex items-center gap-3">
-                    <span className="w-2 h-2 rounded-full" style={{ backgroundColor: cap.color, boxShadow: `0 0 8px ${cap.color}` }}></span>
+                <div key={idx} className="bg-white/[0.02] border border-white/[0.05] p-3 sm:p-4 md:p-6 rounded-xl md:rounded-2xl backdrop-blur-md hover:bg-white/[0.05] transition-all duration-300 group" style={{ '--hover-border': cap.color } as React.CSSProperties}>
+                  <h3 className="text-white font-display text-base sm:text-lg md:text-xl font-bold mb-1 sm:mb-3 flex items-center gap-2 md:gap-3">
+                    <span className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full" style={{ backgroundColor: cap.color, boxShadow: `0 0 8px ${cap.color}` }}></span>
                     {cap.title}
                   </h3>
-                  <p className="text-white/50 font-light text-sm leading-relaxed mb-5">
+                  <p className="text-white/50 font-light text-[11px] sm:text-xs md:text-sm leading-relaxed mb-2 sm:mb-5">
                     {cap.desc}
                   </p>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-1.5 sm:gap-2">
                     {cap.tags.map((tag, tIdx) => (
                       <span key={tIdx} className="px-3 py-1 rounded-full border text-[10px] font-mono transition-colors group-hover:bg-opacity-20" style={{ backgroundColor: `${cap.color}10`, borderColor: `${cap.color}20`, color: cap.color }}>{tag}</span>
                     ))}
