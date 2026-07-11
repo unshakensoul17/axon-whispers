@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef, useMemo, useCallback } from "react";
 import { Link } from '@tanstack/react-router';
 import { Canvas, useFrame, extend } from "@react-three/fiber";
-import { OrbitControls, Sphere, Html, shaderMaterial, Instances, Instance, RoundedBox, Text, Billboard } from "@react-three/drei";
+import { OrbitControls, Sphere, Html, shaderMaterial, Instances, Instance, RoundedBox, Text, Billboard, Loader } from "@react-three/drei";
 import { EffectComposer, Bloom } from "@react-three/postprocessing";
 import * as THREE from "three";
 import gsap from 'gsap';
@@ -686,13 +686,15 @@ function MainStage({ scrollProgress, scrollRef, setActiveProject, activeProject,
   const stageRef = useRef<THREE.Group>(null);
   const isHero = scrollProgress < 0.1;
 
-  const dnaRadius = 1.7;
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+
+  const dnaRadius = isMobile ? 1.0 : 1.7;
   const dnaHeight = 25.0; 
   const dnaLoops = 2.5; 
   const particleCount = 500;
   const scatterAmount = 0.5;
 
-  const cardRadius = 3.6;
+  const cardRadius = isMobile ? 2.0 : 3.6;
   const cardYSpacing = 5.0; 
   const angleOffsetDeg = 0;
   const glassTransmission = 0.90;
@@ -714,7 +716,7 @@ function MainStage({ scrollProgress, scrollRef, setActiveProject, activeProject,
       const _isAbout = sp > 0.1 && sp <= 0.2;
       const _isTech = sp > 0.8 && sp < 0.95;
       const _isContact = sp >= 0.95;
-      const isMobile = window.innerWidth < 768;
+      
       let targetX = 0;
       if (_isHero) targetX = isMobile ? 0 : 2.5;
       else if (_isAbout) targetX = isMobile ? 0 : 2.5;
@@ -929,11 +931,16 @@ export default function Experience() {
       `}</style>
 
       {/* Fixed R3F Background - Entire 3D Scene */}
-      <div className="fixed inset-0 z-0 pointer-events-auto">
-
-        <Canvas
-          camera={{ position: [0, 0, 12], fov: 45 }}
-          dpr={[1, 1.5]}
+      <div className="fixed inset-0 z-0 pointer-events-auto bg-[#020203]">
+        <Loader 
+          containerStyles={{ zIndex: 999, background: '#020203' }}
+          innerStyles={{ width: '300px' }}
+          barStyles={{ background: '#9B5DE5', height: '2px' }}
+          dataStyles={{ color: '#9B5DE5', fontSize: '10px', fontFamily: 'monospace', letterSpacing: '0.2em', textTransform: 'uppercase' }}
+        />
+        <Canvas 
+          className="pointer-events-none" 
+          camera={{ position: [0, 0, isMobile ? 18 : 12], fov: 45 }}
           gl={{ antialias: false, powerPreference: "high-performance" }}
         >
           <ambientLight intensity={0.5} />
@@ -990,8 +997,8 @@ export default function Experience() {
         </button>
       </nav>
 
-      {/* Scroll Progress Indicator & Timeline */}
-      <div className="fixed left-6 md:left-12 top-1/2 -translate-y-1/2 h-[40vh] w-[2px] bg-white/10 rounded-full z-50">
+      {/* Scroll Progress Indicator - Abstract */}
+      <div className="hidden md:block fixed right-6 md:right-12 top-1/2 -translate-y-1/2 h-[40vh] w-[1px] bg-white/10 z-50 pointer-events-none">
         <div
           className="absolute top-0 left-0 w-full bg-gradient-to-b from-[#9B5DE5] to-[#b026ff] rounded-full transition-all duration-200"
           style={{ height: `${Math.max(0, scrollProgress * 100)}%` }}
