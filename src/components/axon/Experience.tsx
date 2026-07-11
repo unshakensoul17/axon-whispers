@@ -121,10 +121,49 @@ const FluidShaderMaterial = shaderMaterial(
 
 extend({ FluidShaderMaterial });
 
+
+
+const WaterRippleMaterial = shaderMaterial(
+  {
+    uTime: 0,
+    uMouse: new THREE.Vector2(0.5, 0.5),
+    uHover: 0,
+    uColor: new THREE.Color("#9B5DE5"),
+  },
+  `
+    varying vec2 vUv;
+    void main() {
+      vUv = uv;
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }
+  `,
+  `
+    varying vec2 vUv;
+    uniform float uTime;
+    uniform vec2 uMouse;
+    uniform float uHover;
+    uniform vec3 uColor;
+
+    void main() {
+      float dist = distance(vUv, uMouse);
+      float wave = sin(dist * 30.0 - uTime * 8.0);
+      float intensity = exp(-dist * 6.0) * uHover;
+      float ripple = wave * intensity;
+      
+      vec3 finalColor = uColor + (ripple * 0.8);
+      float alpha = 0.0 + abs(ripple) * 0.5;
+      
+      gl_FragColor = vec4(finalColor, alpha);
+    }
+  `
+);
+extend({ WaterRippleMaterial });
+
 declare global {
   namespace JSX {
     interface IntrinsicElements {
       fluidShaderMaterial: any;
+      waterRippleMaterial: any;
     }
   }
 }
@@ -305,6 +344,9 @@ function OrbitingCardItem({ proj, i, dnaHeight, dnaRadius, dnaLoops, cardYSpacin
   const cardRef = useRef<THREE.Group>(null);
   const glassMaterialRef = useRef<any>(null);
   const accentRef = useRef<any>(null);
+  const rippleMaterialRef = useRef<any>(null);
+  const targetHover = useRef(0);
+  const mouseUv = useRef(new THREE.Vector2(0.5, 0.5));
 
   const yTarget = (dnaHeight / 2 - 7.5) - (i * cardYSpacing);
   const t = ((dnaHeight / 2) - yTarget) / dnaHeight;
@@ -331,15 +373,18 @@ function OrbitingCardItem({ proj, i, dnaHeight, dnaRadius, dnaLoops, cardYSpacin
   const isAnyActive = !!activeProject;
 
   const wasActive = useRef(false);
+  const wasShattering = useRef(false);
   const [isShattering, setIsShattering] = useState(false);
 
   useEffect(() => {
     if (isActive) {
       wasActive.current = true;
       setIsShattering(false);
+      wasShattering.current = false;
     } else if (wasActive.current) {
       wasActive.current = false;
       setIsShattering(true);
+      wasShattering.current = true;
       setTimeout(() => setIsShattering(false), 1200);
     }
   }, [isActive]);
@@ -347,33 +392,53 @@ function OrbitingCardItem({ proj, i, dnaHeight, dnaRadius, dnaLoops, cardYSpacin
   useFrame((state, delta) => {
     if (!cardRef.current) return;
 
+    if (rippleMaterialRef.current) {
+      rippleMaterialRef.current.uTime = state.clock.elapsedTime;
+      rippleMaterialRef.current.uHover = THREE.MathUtils.lerp(rippleMaterialRef.current.uHover, targetHover.current, 0.05);
+      rippleMaterialRef.current.uMouse.lerp(mouseUv.current, 0.1);
+    }
+
     if (isActive) {
-      _sv.set(12, 12, 12);
-      cardRef.current.scale.lerp(_sv, 0.03);
+      const t = state.clock.elapsedTime * 1.5;
+      const beat = Math.pow(Math.sin(t * Math.PI), 16) + Math.pow(Math.sin((t + 0.15) * Math.PI), 16) * 0.5;
+
+      const pulseScale = 12 + beat * 0.2;
+      _sv.set(pulseScale, pulseScale, pulseScale);
+      cardRef.current.scale.lerp(_sv, 0.05);
+
       if (glassMaterialRef.current) {
-        glassMaterialRef.current.opacity = THREE.MathUtils.lerp(glassMaterialRef.current.opacity, 0, 0.04);
+        glassMaterialRef.current.opacity = THREE.MathUtils.lerp(glassMaterialRef.current.opacity, 1.0, 0.04);
         glassMaterialRef.current.transparent = true;
+        glassMaterialRef.current.emissiveIntensity = THREE.MathUtils.lerp(glassMaterialRef.current.emissiveIntensity, 0.15 + beat * 0.5, 0.1);
       }
       if (accentRef.current) {
-        accentRef.current.opacity = THREE.MathUtils.lerp(accentRef.current.opacity, 0, 0.08);
+        accentRef.current.opacity = THREE.MathUtils.lerp(accentRef.current.opacity, 0.5 + beat * 0.5, 0.08);
       }
     } else if (isShattering) {
       _sv.set(12, 12, 12);
       cardRef.current.scale.copy(_sv);
       if (glassMaterialRef.current) glassMaterialRef.current.opacity = 0;
       if (accentRef.current) accentRef.current.opacity = 0;
-    } else if (isAnyActive) {
-      _sv.set(0.001, 0.001, 0.001);
-      cardRef.current.scale.lerp(_sv, 0.08);
     } else {
-      _sv.set(1, 1, 1);
-      cardRef.current.scale.lerp(_sv, 0.08);
-      if (glassMaterialRef.current) {
-        glassMaterialRef.current.opacity = THREE.MathUtils.lerp(glassMaterialRef.current.opacity, 1, 0.05);
-        if (glassMaterialRef.current.opacity > 0.95) glassMaterialRef.current.transparent = false;
+      if (wasShattering.current) {
+        cardRef.current.scale.set(0.001, 0.001, 0.001);
+        wasShattering.current = false;
       }
-      if (accentRef.current) {
-        accentRef.current.opacity = THREE.MathUtils.lerp(accentRef.current.opacity, 1, 0.05);
+      
+      if (isAnyActive) {
+        _sv.set(0.001, 0.001, 0.001);
+        cardRef.current.scale.lerp(_sv, 0.08);
+      } else {
+        _sv.set(1, 1, 1);
+        cardRef.current.scale.lerp(_sv, 0.08);
+        if (glassMaterialRef.current) {
+          glassMaterialRef.current.opacity = THREE.MathUtils.lerp(glassMaterialRef.current.opacity, 1, 0.05);
+          glassMaterialRef.current.emissiveIntensity = THREE.MathUtils.lerp(glassMaterialRef.current.emissiveIntensity, 0.15, 0.05);
+          if (glassMaterialRef.current.opacity > 0.95) glassMaterialRef.current.transparent = false;
+        }
+        if (accentRef.current) {
+          accentRef.current.opacity = THREE.MathUtils.lerp(accentRef.current.opacity, 1, 0.05);
+        }
       }
     }
   });
@@ -396,10 +461,12 @@ function OrbitingCardItem({ proj, i, dnaHeight, dnaRadius, dnaLoops, cardYSpacin
         onPointerOver={(e) => {
           e.stopPropagation();
           document.body.style.cursor = 'pointer';
+          targetHover.current = 1;
         }}
         onPointerOut={(e) => {
           e.stopPropagation();
           document.body.style.cursor = 'auto';
+          targetHover.current = 0;
         }}
       >
         {isActive && (
@@ -433,6 +500,17 @@ function OrbitingCardItem({ proj, i, dnaHeight, dnaRadius, dnaLoops, cardYSpacin
               thickness={0.5}
             />
           </RoundedBox>
+
+          {/* Inner Fluid Glass Ripple Plane */}
+          <mesh 
+            position={[0, 0, 0.03]}
+            onPointerMove={(e) => {
+              if (e.uv) mouseUv.current.set(e.uv.x, e.uv.y);
+            }}
+          >
+            <planeGeometry args={[3.7, 2.7, 1, 1]} />
+            <waterRippleMaterial ref={rippleMaterialRef} uColor={new THREE.Color(cardTint)} transparent depthWrite={false} blending={THREE.AdditiveBlending} />
+          </mesh>
 
           {/* Top Edge Glow */}
           <mesh position={[0, 1.38, 0.06]}>

@@ -346,65 +346,77 @@ export function ImplosionRing({ color }: { color: string }) {
   );
 }
 
-// Scratch vector for ShatteredGlass — eliminates 800 allocations/frame
-const _stv = new THREE.Vector3();
-
 export function ShatteredGlass({ color = "#ffffff" }: { color?: string }) {
-  const instancedRef = useRef<THREE.InstancedMesh>(null);
-  const count = 50;
+  const pointsRef = useRef<THREE.Points>(null);
+  const count = 100000; // 1 lakh particles
 
-  const dummy = useMemo(() => new THREE.Object3D(), []);
-  const shards = useMemo(() => {
-    return Array.from({ length: count }, () => {
-      const x = (Math.random() - 0.5) * 3.8;
-      const y = (Math.random() - 0.5) * 2.8;
-      const z = (Math.random() - 0.5) * 0.5;
-      return {
-        pos: new THREE.Vector3(x, y, z),
-        vel: new THREE.Vector3(x, y, z).normalize().multiplyScalar(3 + Math.random() * 4),
-        rot: new THREE.Vector3(Math.random(), Math.random(), Math.random()),
-        rotSpeed: new THREE.Vector3(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).multiplyScalar(15),
-        scale: Math.random() * 0.3 + 0.1,
-        life: 0
-      };
-    });
+  const { positions, randoms } = useMemo(() => {
+    const pos = new Float32Array(count * 3);
+    const rnd = new Float32Array(count);
+    
+    for(let i=0; i<count; i++) {
+      // Form the exact volume of the 3.8 x 2.8 glass card
+      pos[i*3] = (Math.random() - 0.5) * 3.8;
+      pos[i*3+1] = (Math.random() - 0.5) * 2.8;
+      pos[i*3+2] = (Math.random() - 0.5) * 0.1;
+      
+      // Random velocity modifier for organic crushing
+      rnd[i] = 0.5 + Math.random() * 2.5; 
+    }
+    return { positions: pos, randoms: rnd };
   }, [count]);
 
+  const mat = useMemo(() => new THREE.PointsMaterial({
+    size: 0.015,
+    color: color,
+    transparent: true,
+    opacity: 1.0,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false
+  }), [color]);
+
   useFrame((_, delta) => {
-    if (!instancedRef.current) return;
-    shards.forEach((shard, i) => {
-      shard.life += delta;
+    if (!pointsRef.current) return;
+    const pos = pointsRef.current.geometry.attributes.position.array as Float32Array;
+    
+    // Violent gravity crush towards center (0,0,0)
+    for(let i=0; i<count; i++) {
+      const px = pos[i*3];
+      const py = pos[i*3+1];
+      const pz = pos[i*3+2];
       
-      if (shard.life < 0.2) {
-        // Explode outward
-        _stv.copy(shard.vel).multiplyScalar(delta);
-        shard.pos.add(_stv);
-      } else {
-        // Implode gravity well
-        shard.vel.add(shard.pos.clone().normalize().multiplyScalar(-15 * delta));
-        shard.vel.multiplyScalar(0.9); // friction
-        _stv.copy(shard.vel).multiplyScalar(delta);
-        shard.pos.add(_stv);
-        shard.scale = Math.max(0.001, shard.scale - delta * 0.4);
+      const dist = Math.sqrt(px*px + py*py + pz*pz);
+      
+      if (dist > 0.02) {
+        // Acceleration increases exponentially as they get closer to the center
+        const pull = (15.0 / (dist + 0.1)) * randoms[i] * delta;
+        
+        const pullX = (px / dist) * pull;
+        const pullY = (py / dist) * pull;
+        const pullZ = (pz / dist) * pull;
+        
+        pos[i*3] -= pullX;
+        pos[i*3+1] -= pullY;
+        pos[i*3+2] -= pullZ;
+        
+        // Snap to center if overshot
+        if (Math.sign(pos[i*3]) !== Math.sign(px)) pos[i*3] = 0;
+        if (Math.sign(pos[i*3+1]) !== Math.sign(py)) pos[i*3+1] = 0;
+        if (Math.sign(pos[i*3+2]) !== Math.sign(pz)) pos[i*3+2] = 0;
       }
-      
-      _stv.copy(shard.rotSpeed).multiplyScalar(delta);
-      shard.rot.add(_stv);
-      
-      dummy.position.copy(shard.pos);
-      dummy.rotation.set(shard.rot.x, shard.rot.y, shard.rot.z);
-      dummy.scale.set(shard.scale, shard.scale, shard.scale);
-      dummy.updateMatrix();
-      instancedRef.current!.setMatrixAt(i, dummy.matrix);
-    });
-    instancedRef.current.instanceMatrix.needsUpdate = true;
+    }
+    pointsRef.current.geometry.attributes.position.needsUpdate = true;
+    
+    // Fade out as the crush completes
+    mat.opacity = Math.max(0, mat.opacity - delta * 0.8);
   });
 
   return (
-    <instancedMesh ref={instancedRef} args={[undefined, undefined, count]}>
-      <tetrahedronGeometry args={[1, 0]} />
-      <meshPhysicalMaterial color={color} transmission={0.9} opacity={1} transparent metalness={0.6} roughness={0.1} />
-    </instancedMesh>
+    <points ref={pointsRef} material={mat}>
+      <bufferGeometry>
+        <bufferAttribute attach="attributes-position" count={count} array={positions} itemSize={3} />
+      </bufferGeometry>
+    </points>
   );
 }
 
