@@ -6,7 +6,7 @@
 
   <!-- Main Portfolio Experience -->
   <url>
-    <loc>https://akash-yaduwanshi.vercel.app/</loc>
+    <loc>https://akashyaduwanshiportfolio.vercel.app/</loc>
     <lastmod>2026-07-11</lastmod>
     <changefreq>monthly</changefreq>
     <priority>1.0</priority>
@@ -14,7 +14,7 @@
 
   <!-- All Projects Page -->
   <url>
-    <loc>https://akash-yaduwanshi.vercel.app/projects</loc>
+    <loc>https://akashyaduwanshiportfolio.vercel.app/projects</loc>
     <lastmod>2026-07-11</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.9</priority>

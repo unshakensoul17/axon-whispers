@@ -85,14 +85,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "theme-color", content: "#B026FF" },
 
       // ── Canonical ────────────────────────────────────────────────────
-      { property: "canonical", content: "https://akash-yaduwanshi.vercel.app/" },
+      { property: "canonical", content: "https://akashyaduwanshiportfolio.vercel.app/" },
 
       // ── Open Graph (LinkedIn, Facebook, WhatsApp previews) ───────────
       { property: "og:type", content: "website" },
-      { property: "og:url", content: "https://akash-yaduwanshi.vercel.app/" },
+      { property: "og:url", content: "https://akashyaduwanshiportfolio.vercel.app/" },
       { property: "og:title", content: "Akash Yaduwanshi | AI Engineer & ML Researcher" },
       { property: "og:description", content: "Cinematic 3D portfolio of Akash Yaduwanshi — AI Engineer building autonomous pipelines, LLM systems, and intelligent developer tooling." },
-      { property: "og:image", content: "https://akash-yaduwanshi.vercel.app/assets/phantmos_ui.png" },
+      { property: "og:image", content: "https://akashyaduwanshiportfolio.vercel.app/assets/phantmos_ui.png" },
       { property: "og:image:width", content: "1200" },
       { property: "og:image:height", content: "630" },
       { property: "og:image:alt", content: "Akash Yaduwanshi Portfolio — AI Engineer" },
@@ -105,7 +105,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:creator", content: "@unshakensoul17" },
       { name: "twitter:title", content: "Akash Yaduwanshi | AI Engineer & ML Researcher" },
       { name: "twitter:description", content: "Cinematic 3D portfolio — AI Engineer building autonomous pipelines, LLM systems, and intelligent developer tools." },
-      { name: "twitter:image", content: "https://akash-yaduwanshi.vercel.app/assets/phantmos_ui.png" },
+      { name: "twitter:image", content: "https://akashyaduwanshiportfolio.vercel.app/assets/phantmos_ui.png" },
       { name: "twitter:image:alt", content: "Akash Yaduwanshi Portfolio" },
 
       // ── JSON-LD Structured Data (Person schema) ──────────────────────
@@ -114,8 +114,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
           "@context": "https://schema.org",
           "@type": "Person",
           "name": "Akash Yaduwanshi",
-          "url": "https://akash-yaduwanshi.vercel.app/",
-          "image": "https://akash-yaduwanshi.vercel.app/assets/phantmos_ui.png",
+          "url": "https://akashyaduwanshiportfolio.vercel.app/",
+          "image": "https://akashyaduwanshiportfolio.vercel.app/assets/phantmos_ui.png",
           "jobTitle": "AI Engineer",
           "description": "AI Engineer and ML Researcher specializing in LLMs, multi-agent systems, and autonomous AI pipelines.",
           "email": "aakashyaduwanshi0470@gmail.com",
@@ -138,7 +138,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     ],
     links: [
       { rel: "stylesheet", href: appCss },
-      { rel: "canonical", href: "https://akash-yaduwanshi.vercel.app/" },
+      { rel: "canonical", href: "https://akashyaduwanshiportfolio.vercel.app/" },
       { rel: "manifest", href: "/site.webmanifest" },
       { rel: "icon", href: "/assets/phantmos_ui.png", type: "image/png" },
       { rel: "apple-touch-icon", href: "/assets/phantmos_ui.png" },
