@@ -72,21 +72,78 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   head: () => ({
     meta: [
       { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Akash Yaduwanshi | AI Engineer" },
-      { name: "description", content: "Portfolio of Akash Yaduwanshi, AI Engineer and Researcher." },
+      { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
+
+      // ── Primary SEO ──────────────────────────────────────────────────
+      { title: "Akash Yaduwanshi | AI Engineer & ML Researcher" },
+      { name: "description", content: "Portfolio of Akash Yaduwanshi — AI Engineer specializing in LLMs, multi-agent systems, autonomous AI pipelines, and intelligent developer tooling. Based in India." },
+      { name: "keywords", content: "Akash Yaduwanshi, AI Engineer, Machine Learning Engineer, LLM Engineer, Multi-Agent Systems, Python Developer, Portfolio, AI Researcher, TanStack, React, Three.js" },
       { name: "author", content: "Akash Yaduwanshi" },
-      { property: "og:title", content: "Akash Yaduwanshi | AI Engineer" },
-      { property: "og:description", content: "Portfolio of Akash Yaduwanshi, AI Engineer and Researcher." },
+      { name: "robots", content: "index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" },
+      { name: "language", content: "English" },
+      { name: "revisit-after", content: "30 days" },
+      { name: "theme-color", content: "#B026FF" },
+
+      // ── Canonical ────────────────────────────────────────────────────
+      { property: "canonical", content: "https://akash-yaduwanshi.vercel.app/" },
+
+      // ── Open Graph (LinkedIn, Facebook, WhatsApp previews) ───────────
       { property: "og:type", content: "website" },
+      { property: "og:url", content: "https://akash-yaduwanshi.vercel.app/" },
+      { property: "og:title", content: "Akash Yaduwanshi | AI Engineer & ML Researcher" },
+      { property: "og:description", content: "Cinematic 3D portfolio of Akash Yaduwanshi — AI Engineer building autonomous pipelines, LLM systems, and intelligent developer tooling." },
+      { property: "og:image", content: "https://akash-yaduwanshi.vercel.app/assets/phantmos_ui.png" },
+      { property: "og:image:width", content: "1200" },
+      { property: "og:image:height", content: "630" },
+      { property: "og:image:alt", content: "Akash Yaduwanshi Portfolio — AI Engineer" },
+      { property: "og:site_name", content: "Akash Yaduwanshi" },
+      { property: "og:locale", content: "en_US" },
+
+      // ── Twitter / X Card ─────────────────────────────────────────────
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:site", content: "@unshakensoul17" },
+      { name: "twitter:creator", content: "@unshakensoul17" },
+      { name: "twitter:title", content: "Akash Yaduwanshi | AI Engineer & ML Researcher" },
+      { name: "twitter:description", content: "Cinematic 3D portfolio — AI Engineer building autonomous pipelines, LLM systems, and intelligent developer tools." },
+      { name: "twitter:image", content: "https://akash-yaduwanshi.vercel.app/assets/phantmos_ui.png" },
+      { name: "twitter:image:alt", content: "Akash Yaduwanshi Portfolio" },
+
+      // ── JSON-LD Structured Data (Person schema) ──────────────────────
+      {
+        "script:ld+json": JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "Person",
+          "name": "Akash Yaduwanshi",
+          "url": "https://akash-yaduwanshi.vercel.app/",
+          "image": "https://akash-yaduwanshi.vercel.app/assets/phantmos_ui.png",
+          "jobTitle": "AI Engineer",
+          "description": "AI Engineer and ML Researcher specializing in LLMs, multi-agent systems, and autonomous AI pipelines.",
+          "email": "aakashyaduwanshi0470@gmail.com",
+          "sameAs": [
+            "https://github.com/unshakensoul17",
+            "https://linkedin.com/in/akash-yaduwanshi-902a3b352"
+          ],
+          "knowsAbout": [
+            "Artificial Intelligence",
+            "Machine Learning",
+            "Large Language Models",
+            "Multi-Agent Systems",
+            "Python",
+            "React",
+            "TypeScript",
+            "Three.js"
+          ]
+        })
+      },
     ],
     links: [
-      {
-        rel: "stylesheet",
-        href: appCss,
-      },
-      { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
+      { rel: "stylesheet", href: appCss },
+      { rel: "canonical", href: "https://akash-yaduwanshi.vercel.app/" },
+      { rel: "manifest", href: "/site.webmanifest" },
+      { rel: "icon", href: "/assets/phantmos_ui.png", type: "image/png" },
+      { rel: "apple-touch-icon", href: "/assets/phantmos_ui.png" },
+      { rel: "preconnect", href: "https://fonts.googleapis.com" },
+      { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
     ],
   }),
   shellComponent: RootShell,
