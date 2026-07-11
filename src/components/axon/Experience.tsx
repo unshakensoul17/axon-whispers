@@ -11,13 +11,20 @@ import { SmokeBlast, NeonDust, BlackholeBomb, HyperWarp, MatrixRain, CosmicVorte
 gsap.registerPlugin(ScrollTrigger);
 
 // ==========================================
+// OBSIDIAN AURORA (Hardcoded theme)
+// ==========================================
+// Primary: #9B5DE5
+// Secondary: #F15BB5
+// Accent: #00BBF9
+// BG: #07050F
+// ==========================================
 // PURE THREE.JS GLSL CUSTOM SHADER
 // ==========================================
 const FluidShaderMaterial = shaderMaterial(
   {
     uTime: 0,
-    uColor1: new THREE.Color("#00e5ff"), // Electric Cyan
-    uColor2: new THREE.Color("#b026ff"), // Neon Purple
+    uColor1: new THREE.Color("#9B5DE5"),
+    uColor2: new THREE.Color("#F15BB5"),
   },
   // Vertex Shader: Fast 3D Simplex Noise
   `
@@ -68,6 +75,8 @@ const FluidShaderMaterial = shaderMaterial(
       return 42.0 * dot( m*m, vec4( dot(p0,x0), dot(p1,x1), dot(p2,x2), dot(p3,x3) ) );
     }
 
+    varying vec3 vPosition;
+
     void main() {
       vUv = uv;
       vNormal = normal;
@@ -76,6 +85,7 @@ const FluidShaderMaterial = shaderMaterial(
       vNoise = noise;
       
       vec3 newPos = position + normal * (noise * 0.4);
+      vPosition = (modelMatrix * vec4(newPos, 1.0)).xyz;
       gl_Position = projectionMatrix * modelViewMatrix * vec4(newPos, 1.0);
     }
   `,
@@ -88,17 +98,23 @@ const FluidShaderMaterial = shaderMaterial(
     uniform vec3 uColor1;
     uniform vec3 uColor2;
 
+    varying vec3 vPosition;
+
     void main() {
       float mixValue = smoothstep(-0.3, 0.3, vNoise);
       vec3 color = mix(uColor1, uColor2, mixValue);
-      
-      vec3 viewDirection = normalize(cameraPosition - vNormal);
+
+      vec3 viewDirection = normalize(cameraPosition - vPosition);
       float fresnel = dot(viewDirection, vNormal);
       fresnel = clamp(1.0 - fresnel, 0.0, 1.0);
-      fresnel = pow(fresnel, 2.5);
-      
-      vec3 finalColor = color + (vec3(1.0, 0.8, 1.0) * fresnel * 0.8);
-      gl_FragColor = vec4(finalColor, 1.0);
+      fresnel = pow(fresnel, 4.0); 
+
+      vec3 rimColor = mix(uColor1, uColor2, 0.3);
+      float depth = smoothstep(0.0, 1.0, vNoise * 0.5 + 0.5);
+      vec3 finalColor = color + rimColor * fresnel * 0.5 * depth;
+
+      float alpha = 0.92 - fresnel * 0.15;
+      gl_FragColor = vec4(finalColor, alpha);
     }
   `
 );
@@ -168,22 +184,14 @@ const dnaFragGLSL = `
 // ---------------------------------------------------------
 // 3D Point-Cloud DNA Bone Structure
 // ---------------------------------------------------------
-function DNAStrand({ visible, dnaRadius, dnaHeight, dnaLoops, particleCount, scatterAmount }: { 
-  visible: boolean;
-  dnaRadius: number;
-  dnaHeight: number;
-  dnaLoops: number;
-  particleCount: number;
-  scatterAmount: number;
-}) {
+function DNAStrand({ visible, dnaRadius = 2.0, dnaHeight = 20.0, dnaLoops = 4, particleCount = 2000, scatterAmount = 0.5 }: any) {
   const groupRef = useRef<THREE.Group>(null);
   const pointsRef = useRef<THREE.Points>(null);
 
-  // Build geometry buffers once — positions, colours, sizes
   const { posArray, colArray, sizeArray, total } = useMemo(() => {
     const pts: number[] = [], cols: number[] = [], sizes: number[] = [];
-    const cRed  = new THREE.Color("#ff2a00").multiplyScalar(1.5);
-    const cCyan = new THREE.Color("#00e5ff").multiplyScalar(1.5);
+    const cRed = new THREE.Color("#F15BB5").multiplyScalar(1.5);
+    const cCyan = new THREE.Color("#00BBF9").multiplyScalar(1.5);
     const cA = new THREE.Color(), cB = new THREE.Color();
 
     // Backbone — two helices
@@ -193,13 +201,13 @@ function DNAStrand({ visible, dnaRadius, dnaHeight, dnaLoops, particleCount, sca
       const y = dnaHeight / 2 - t * dnaHeight;
       const sc = scatterAmount;
       // strand A
-      pts.push(Math.cos(angle)*dnaRadius + (Math.random()-.5)*sc, y+(Math.random()-.5)*sc, Math.sin(angle)*dnaRadius+(Math.random()-.5)*sc);
+      pts.push(Math.cos(angle) * dnaRadius + (Math.random() - .5) * sc, y + (Math.random() - .5) * sc, Math.sin(angle) * dnaRadius + (Math.random() - .5) * sc);
       cols.push(cRed.r, cRed.g, cRed.b);
-      sizes.push(Math.random()*4+3);
+      sizes.push(Math.random() * 4 + 3);
       // strand B
-      pts.push(Math.cos(angle+Math.PI)*dnaRadius+(Math.random()-.5)*sc, y+(Math.random()-.5)*sc, Math.sin(angle+Math.PI)*dnaRadius+(Math.random()-.5)*sc);
+      pts.push(Math.cos(angle + Math.PI) * dnaRadius + (Math.random() - .5) * sc, y + (Math.random() - .5) * sc, Math.sin(angle + Math.PI) * dnaRadius + (Math.random() - .5) * sc);
       cols.push(cCyan.r, cCyan.g, cCyan.b);
-      sizes.push(Math.random()*4+3);
+      sizes.push(Math.random() * 4 + 3);
     }
 
     // Rungs — gradient dots connecting the helices
@@ -209,15 +217,15 @@ function DNAStrand({ visible, dnaRadius, dnaHeight, dnaLoops, particleCount, sca
       const t = r / rungCount;
       const angle = -t * Math.PI * 2 * dnaLoops;
       const y = dnaHeight / 2 - t * dnaHeight;
-      const ax = Math.cos(angle)*dnaRadius, az = Math.sin(angle)*dnaRadius;
-      const bx = Math.cos(angle+Math.PI)*dnaRadius, bz = Math.sin(angle+Math.PI)*dnaRadius;
+      const ax = Math.cos(angle) * dnaRadius, az = Math.sin(angle) * dnaRadius;
+      const bx = Math.cos(angle + Math.PI) * dnaRadius, bz = Math.sin(angle + Math.PI) * dnaRadius;
       for (let p = 1; p < perRung; p++) {
         const f = p / perRung;
         const sc2 = scatterAmount * 0.4;
-        pts.push(ax+(bx-ax)*f+(Math.random()-.5)*sc2, y+(Math.random()-.5)*sc2, az+(bz-az)*f+(Math.random()-.5)*sc2);
+        pts.push(ax + (bx - ax) * f + (Math.random() - .5) * sc2, y + (Math.random() - .5) * sc2, az + (bz - az) * f + (Math.random() - .5) * sc2);
         cA.copy(cRed); cB.copy(cCyan); cA.lerp(cB, f).multiplyScalar(1.3);
         cols.push(cA.r, cA.g, cA.b);
-        sizes.push(Math.random()*2+1.5);
+        sizes.push(Math.random() * 2 + 1.5);
       }
     }
 
@@ -229,7 +237,6 @@ function DNAStrand({ visible, dnaRadius, dnaHeight, dnaLoops, particleCount, sca
     };
   }, [dnaRadius, dnaHeight, dnaLoops, particleCount, scatterAmount]);
 
-  // Reliable PointsMaterial with vertex colors — no custom attributes, works everywhere
   const mat = useMemo(() => new THREE.PointsMaterial({
     size: 0.09,
     vertexColors: true,
@@ -251,8 +258,7 @@ function DNAStrand({ visible, dnaRadius, dnaHeight, dnaLoops, particleCount, sca
       <points material={mat}>
         <bufferGeometry>
           <bufferAttribute attach="attributes-position" args={[posArray, 3]} />
-          {/* vertexColors path — built-in Three.js, no extension needed */}
-          <bufferAttribute attach="attributes-color"    args={[colArray, 3]} />
+          <bufferAttribute attach="attributes-color" args={[colArray, 3]} />
         </bufferGeometry>
       </points>
     </group>
@@ -275,7 +281,7 @@ function OrbitingCards({ visible, dnaHeight, dnaRadius, dnaLoops, cardYSpacing, 
   return (
     <group ref={groupRef} scale={0.001}>
       {PROJECTS.map((proj, i) => (
-        <OrbitingCardItem 
+        <OrbitingCardItem
           key={proj.id}
           proj={proj}
           i={i}
@@ -299,18 +305,24 @@ function OrbitingCardItem({ proj, i, dnaHeight, dnaRadius, dnaLoops, cardYSpacin
   const cardRef = useRef<THREE.Group>(null);
   const glassMaterialRef = useRef<any>(null);
   const accentRef = useRef<any>(null);
-  
-  const yTarget = (dnaHeight / 2 - 7.5) - (i * cardYSpacing); 
+
+  const yTarget = (dnaHeight / 2 - 7.5) - (i * cardYSpacing);
   const t = ((dnaHeight / 2) - yTarget) / dnaHeight;
-  const isLeft = i % 2 !== 0; 
-  const angleOffset = isLeft ? (angleOffsetDeg * Math.PI / 180) : -(angleOffsetDeg * Math.PI / 180); 
-  const baseAngle = -t * Math.PI * 2 * dnaLoops; 
+  const isLeft = i % 2 === 0;
+
+  const techStr = proj.tech.toLowerCase();
+  let cardTint = "#9B5DE5"; // Default Purple (Rust)
+  if (techStr.includes("python") || techStr.includes("django")) cardTint = "#00BBF9"; // Cyan
+  else if (techStr.includes("typescript") || techStr.includes("react") || techStr.includes("next")) cardTint = "#F15BB5"; // Pink
+
+  const themeColor = cardTint;
+  const angleOffset = isLeft ? (angleOffsetDeg * Math.PI / 180) : -(angleOffsetDeg * Math.PI / 180);
+  const baseAngle = -t * Math.PI * 2 * dnaLoops;
   const cardAngle = baseAngle + angleOffset;
-  const themeColor = isLeft ? "#00e5ff" : "#ff2a00";
-  
+
   const p1x = Math.cos(baseAngle) * dnaRadius;
   const p1z = Math.sin(baseAngle) * dnaRadius;
-  const p2x = Math.cos(cardAngle) * 3.6; 
+  const p2x = Math.cos(cardAngle) * 3.6;
   const p2z = Math.sin(cardAngle) * 3.6;
   const localRotY = baseAngle - Math.PI / 2;
   const accentX = isLeft ? 1.9 : -1.9;
@@ -318,51 +330,64 @@ function OrbitingCardItem({ proj, i, dnaHeight, dnaRadius, dnaLoops, cardYSpacin
   const isActive = activeProject === proj.id;
   const isAnyActive = !!activeProject;
 
+  const wasActive = useRef(false);
+  const [isShattering, setIsShattering] = useState(false);
+
+  useEffect(() => {
+    if (isActive) {
+      wasActive.current = true;
+      setIsShattering(false);
+    } else if (wasActive.current) {
+      wasActive.current = false;
+      setIsShattering(true);
+      setTimeout(() => setIsShattering(false), 1200);
+    }
+  }, [isActive]);
+
   useFrame((state, delta) => {
     if (!cardRef.current) return;
-    
+
     if (isActive) {
-      // Scale up massively to swallow the screen
       _sv.set(12, 12, 12);
       cardRef.current.scale.lerp(_sv, 0.03);
-      // Slowly fade out the glass backing to reveal the cinematic UI underneath
       if (glassMaterialRef.current) {
-         glassMaterialRef.current.opacity = THREE.MathUtils.lerp(glassMaterialRef.current.opacity, 0, 0.04);
-         glassMaterialRef.current.transparent = true;
+        glassMaterialRef.current.opacity = THREE.MathUtils.lerp(glassMaterialRef.current.opacity, 0, 0.04);
+        glassMaterialRef.current.transparent = true;
       }
       if (accentRef.current) {
-         accentRef.current.opacity = THREE.MathUtils.lerp(accentRef.current.opacity, 0, 0.08);
+        accentRef.current.opacity = THREE.MathUtils.lerp(accentRef.current.opacity, 0, 0.08);
       }
+    } else if (isShattering) {
+      _sv.set(12, 12, 12);
+      cardRef.current.scale.copy(_sv);
+      if (glassMaterialRef.current) glassMaterialRef.current.opacity = 0;
+      if (accentRef.current) accentRef.current.opacity = 0;
     } else if (isAnyActive) {
-      // Shrink other cards out of view
       _sv.set(0.001, 0.001, 0.001);
       cardRef.current.scale.lerp(_sv, 0.08);
     } else {
-      // Normal rest state
       _sv.set(1, 1, 1);
       cardRef.current.scale.lerp(_sv, 0.08);
       if (glassMaterialRef.current) {
-         glassMaterialRef.current.opacity = THREE.MathUtils.lerp(glassMaterialRef.current.opacity, 1, 0.05);
-         if (glassMaterialRef.current.opacity > 0.95) glassMaterialRef.current.transparent = false;
+        glassMaterialRef.current.opacity = THREE.MathUtils.lerp(glassMaterialRef.current.opacity, 1, 0.05);
+        if (glassMaterialRef.current.opacity > 0.95) glassMaterialRef.current.transparent = false;
       }
       if (accentRef.current) {
-         accentRef.current.opacity = THREE.MathUtils.lerp(accentRef.current.opacity, 1, 0.05);
+        accentRef.current.opacity = THREE.MathUtils.lerp(accentRef.current.opacity, 1, 0.05);
       }
     }
   });
 
   return (
     <group>
-      {/* Glowing Attachment Node on DNA */}
       <mesh position={[p1x, yTarget, p1z]}>
-         <sphereGeometry args={[0.08, 16, 16]} />
-         <meshBasicMaterial color={themeColor} />
+        <sphereGeometry args={[0.08, 16, 16]} />
+        <meshBasicMaterial color={themeColor} />
       </mesh>
 
-      {/* The 3D Card Object */}
-      <group 
+      <group
         ref={cardRef}
-        position={[p2x, yTarget, p2z]} 
+        position={[p2x, yTarget, p2z]}
         rotation={[0, localRotY, 0]}
         onClick={(e) => {
           e.stopPropagation();
@@ -377,7 +402,6 @@ function OrbitingCardItem({ proj, i, dnaHeight, dnaRadius, dnaLoops, cardYSpacin
           document.body.style.cursor = 'auto';
         }}
       >
-        {/* Cinematic Transition Engine Swap */}
         {isActive && (
           <group>
             {transitionType === 'smoke-blast' && <SmokeBlast color={themeColor} />}
@@ -389,65 +413,70 @@ function OrbitingCardItem({ proj, i, dnaHeight, dnaRadius, dnaLoops, cardYSpacin
             {transitionType === 'implosion-ring' && <ImplosionRing color={themeColor} />}
             {transitionType === 'matrix-rain' && <MatrixRain color={themeColor} />}
             {transitionType === 'cosmic-vortex' && <CosmicVortex color={themeColor} />}
-            {transitionType === 'shattered-glass' && <ShatteredGlass />}
           </group>
         )}
 
-        {/* Glass Backing — transmission makes the dark card visible as actual glass against the scene */}
-        <RoundedBox args={[3.8, 2.8, 0.05]} radius={0.15} smoothness={4}>
-          <meshPhysicalMaterial
-            ref={glassMaterialRef}
-            color="#030305"
-            transmission={glassTransmission}
-            opacity={1}
-            metalness={0.3}
-            roughness={glassRoughness}
-            ior={1.5}
-            thickness={0.5}
-          />
-        </RoundedBox>
+        {isShattering && <ShatteredGlass color={cardTint} />}
 
-        {/* Glowing Tech Accent Line */}
-        <mesh position={[accentX, 0, 0.06]}>
-          <planeGeometry args={[0.04, 2.0]} />
-          <meshBasicMaterial ref={accentRef} color={themeColor} transparent opacity={1} />
-        </mesh>
+        <group visible={!isShattering}>
+          <RoundedBox args={[3.8, 2.8, 0.05]} radius={0.15} smoothness={4}>
+            <meshPhysicalMaterial
+              ref={glassMaterialRef}
+              color={cardTint}
+              emissive={cardTint}
+              emissiveIntensity={0.15}
+              transmission={0.92}
+              opacity={1}
+              metalness={0.4}
+              roughness={0.2}
+              ior={1.5}
+              thickness={0.5}
+            />
+          </RoundedBox>
 
-        {/* 3D Projected HTML Overlay */}
+          {/* Top Edge Glow */}
+          <mesh position={[0, 1.38, 0.06]}>
+            <planeGeometry args={[3.4, 0.03]} />
+            <meshBasicMaterial color={cardTint} transparent opacity={0.8} />
+          </mesh>
+
+          {/* Side Accent */}
+          <mesh position={[accentX, 0, 0.06]}>
+            <planeGeometry args={[0.04, 2.0]} />
+            <meshBasicMaterial ref={accentRef} color={themeColor} transparent opacity={1} />
+          </mesh>
+        </group>
+
         <Html transform position={[0, 0, 0.1]} distanceFactor={2.5} center className={isActive ? 'opacity-0 transition-opacity duration-700 pointer-events-none' : 'opacity-100 transition-opacity duration-300'}>
-          <div 
+          <div
             onClick={(e) => {
-               e.stopPropagation();
-               setActiveProject(proj.id);
+              e.stopPropagation();
+              setActiveProject(proj.id);
             }}
             className={`w-[400px] text-left pointer-events-auto cursor-pointer select-none transition-all duration-700 hover:scale-[1.02] group ${isLeft ? 'pr-2' : 'pl-2'}`}
           >
-            {/* Tech tag with neon glow and technical UI markers */}
-            <div className="flex items-center gap-3 mb-4 opacity-80 group-hover:opacity-100 transition-opacity duration-300">
-              <div className={`w-1.5 h-1.5 rounded-full ${isLeft ? 'bg-[#00e5ff] shadow-[0_0_12px_#00e5ff]' : 'bg-[#ff2a00] shadow-[0_0_12px_#ff2a00]'}`} />
+            <div className="flex items-center gap-3 mb-4 opacity-90 group-hover:opacity-100 transition-opacity duration-300">
+              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: cardTint, boxShadow: `0 0 12px ${cardTint}` }} />
               <div className="flex flex-col">
-                <p className={`text-[10px] font-mono uppercase tracking-[0.3em] font-bold ${isLeft ? 'text-[#00e5ff]' : 'text-[#ff2a00]'}`}>
-                  {proj.tech.split(' / ')[0]} 
+                <p className="text-xs font-mono uppercase tracking-[0.3em] font-bold drop-shadow-md" style={{ color: cardTint }}>
+                  {proj.tech.split(' / ')[0]}
                 </p>
-                <p className="text-[8px] font-mono text-white/30 tracking-widest mt-0.5">SYS_ID: [{proj.id.toUpperCase()}]</p>
+                <p className="text-[10px] font-mono text-white/50 tracking-widest mt-0.5 drop-shadow-md">SYS_ID: [{proj.id.toUpperCase()}]</p>
               </div>
             </div>
-            
-            {/* Title with metallic gradient and sharp font */}
-            <h3 className="text-4xl font-light text-transparent bg-clip-text bg-gradient-to-br from-white via-white to-white/40 mb-4 tracking-wider group-hover:drop-shadow-[0_0_15px_rgba(255,255,255,0.3)] transition-all duration-500">
+
+            <h3 className="text-5xl font-semibold text-white mb-4 tracking-wider drop-shadow-[0_4px_8px_rgba(0,0,0,0.8)] group-hover:drop-shadow-[0_0_15px_rgba(255,255,255,0.4)] transition-all duration-500">
               {proj.title}
             </h3>
-            
-            {/* Description with glassmorphism pane feel */}
-            <div className="relative pl-4 border-l-2 border-white/10 group-hover:border-white/30 transition-colors duration-300">
-              <p className="text-[12px] font-light text-white/60 leading-relaxed max-w-[360px] group-hover:text-white/90 transition-colors duration-300">
+
+            <div className="relative pl-4 border-l-2 border-white/20 group-hover:border-white/50 transition-colors duration-300">
+              <p className="text-sm font-medium text-white/90 leading-relaxed max-w-[360px] drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] group-hover:text-white transition-colors duration-300">
                 {proj.desc}
               </p>
             </div>
 
-            {/* Decorative bottom element */}
             <div className="mt-8 flex items-center gap-4 opacity-30 group-hover:opacity-100 transition-opacity duration-500">
-              <div className={`h-[1px] flex-1 ${isLeft ? 'bg-gradient-to-r from-[#00e5ff] to-transparent' : 'bg-gradient-to-r from-[#ff2a00] to-transparent'}`} />
+              <div className="h-[1px] flex-1" style={{ backgroundImage: `linear-gradient(to right, ${cardTint}, transparent)` }} />
               <div className="text-[9px] font-mono tracking-[0.4em] text-white/70 bg-white/5 px-2 py-1 rounded border border-white/10 group-hover:border-white/30">ACCESS_NODE</div>
             </div>
           </div>
@@ -456,10 +485,6 @@ function OrbitingCardItem({ proj, i, dnaHeight, dnaRadius, dnaLoops, cardYSpacin
     </group>
   );
 }
-
-
-
-
 
 const TECH_STACK = [
   { name: "Python", icon: Terminal },
@@ -477,23 +502,22 @@ const TECH_STACK = [
   { name: "React", icon: Box }
 ];
 
-// CanvasLabel — canvas texture sprite, works on ALL hardware (no ANGLE_instanced_arrays needed)
 function CanvasLabel({ text }: { text: string }) {
   const texture = useMemo(() => {
     const W = 320, H = 72;
     const canvas = document.createElement('canvas');
     canvas.width = W; canvas.height = H;
     const ctx = canvas.getContext('2d')!;
-    ctx.fillStyle = 'rgba(3,3,5,0.95)';
-    ctx.beginPath(); ctx.roundRect(2, 2, W-4, H-4, 14); ctx.fill();
-    ctx.strokeStyle = 'rgba(0,229,255,0.5)';
+    ctx.fillStyle = 'rgba(0,0,0,0.95)';
+    ctx.beginPath(); ctx.roundRect(2, 2, W - 4, H - 4, 14); ctx.fill();
+    ctx.strokeStyle = "#9B5DE5";
     ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.roundRect(2, 2, W-4, H-4, 14); ctx.stroke();
-    ctx.fillStyle = '#00e5ff';
+    ctx.beginPath(); ctx.roundRect(2, 2, W - 4, H - 4, 14); ctx.stroke();
+    ctx.fillStyle = "#9B5DE5";
     ctx.font = 'bold 22px monospace';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(text.toUpperCase(), W/2, H/2);
+    ctx.fillText(text.toUpperCase(), W / 2, H / 2);
     return new THREE.CanvasTexture(canvas);
   }, [text]);
   return (
@@ -532,21 +556,21 @@ function OrbitingTechStack({ visible, positionY }: { visible: boolean; positionY
   );
 }
 
-// ---------------------------------------------------------
-// Core Fluid Sphere Component
-// ---------------------------------------------------------
 function ActiveTheoryCore({ visible, positionY = 15.0, shrinkToDot = false }: { visible: boolean, positionY?: number, shrinkToDot?: boolean }) {
   const materialRef = useRef<any>(null);
   const wireframeRef = useRef<THREE.Mesh>(null);
   const groupRef = useRef<THREE.Group>(null);
 
-  // Spring instances — pre-allocated, zero GC
   const springX = useMemo(() => new Spring(0.08, 0.82), []);
   const springY = useMemo(() => new Spring(0.08, 0.82), []);
 
   useFrame((state) => {
     const time = state.clock.getElapsedTime();
-    if (materialRef.current) materialRef.current.uTime = time;
+    if (materialRef.current) {
+      materialRef.current.uTime = time;
+      materialRef.current.uColor1.set("#9B5DE5");
+      materialRef.current.uColor2.set("#F15BB5");
+    }
 
     if (wireframeRef.current) {
       wireframeRef.current.rotation.y = -time * 0.08;
@@ -554,8 +578,7 @@ function ActiveTheoryCore({ visible, positionY = 15.0, shrinkToDot = false }: { 
     }
 
     if (groupRef.current) {
-      // Spring physics — elastic overshoot makes sphere feel alive
-      springX.target =  (state.pointer.x * Math.PI) / 8;
+      springX.target = (state.pointer.x * Math.PI) / 8;
       springY.target = -(state.pointer.y * Math.PI) / 8;
       groupRef.current.rotation.y = springX.update();
       groupRef.current.rotation.x = springY.update();
@@ -568,55 +591,49 @@ function ActiveTheoryCore({ visible, positionY = 15.0, shrinkToDot = false }: { 
 
   return (
     <group ref={groupRef} position={[0, positionY, 0]}>
-      {/* Drastically reduced polygon count from 256x256 to 64x64 for massive performance boost */}
       <Sphere args={[2.0, 64, 64]}>
         <fluidShaderMaterial ref={materialRef} />
       </Sphere>
 
-      <Sphere ref={wireframeRef} args={[3.0, 16, 16]}>
-        <meshBasicMaterial color="#00e5ff" wireframe={true} transparent={true} opacity={0.15} />
+      <Sphere args={[2.8, 32, 32]}>
+        <meshBasicMaterial color="#9B5DE5" transparent={true} opacity={0.05} side={THREE.BackSide} />
+      </Sphere>
+
+      <Sphere args={[2.6, 32, 32]}>
+        <meshBasicMaterial color="#9B5DE5" wireframe={true} transparent={true} opacity={0.12} />
       </Sphere>
     </group>
   );
 }
 
-
-
-// ---------------------------------------------------------
-// Main Orchestration Stage
-// ---------------------------------------------------------
 function MainStage({ scrollProgress, scrollRef, setActiveProject, activeProject, transitionType }: { scrollProgress: number, scrollRef: React.RefObject<number>, setActiveProject: (id: string) => void, activeProject: string | null, transitionType: string }) {
   const stageRef = useRef<THREE.Group>(null);
   const isHero = scrollProgress < 0.1;
 
-  // Hardcoded production values
   const dnaRadius = 1.7;
-  const dnaHeight = 25.0; // Lengthened to create a buffer at the top
-  const dnaLoops = 2.5; // Slope remains identical
-  const particleCount = 500; 
+  const dnaHeight = 25.0; 
+  const dnaLoops = 2.5; 
+  const particleCount = 500;
   const scatterAmount = 0.5;
 
   const cardRadius = 3.6;
-  const cardYSpacing = 5.0; // Restored to 5.0 to fix rotation overlap bugs
+  const cardYSpacing = 5.0; 
   const angleOffsetDeg = 0;
   const glassTransmission = 0.90;
   const glassRoughness = 0.30;
-  
+
   const finaleEffect = 'Core Re-Assembly';
 
-  // State derived from scrollProgress (throttled — updates at phase boundaries)
   const isAboutActive = scrollProgress > 0.1 && scrollProgress <= 0.2;
   const isTechStackActive = finaleEffect === 'Core Re-Assembly' && scrollProgress > 0.8 && scrollProgress < 0.95;
   const isContactActive = scrollProgress >= 0.95;
 
   useFrame((state) => {
     if (stageRef.current) {
-      // Read from ref every frame — always current, no React re-render needed
       const sp = scrollRef.current;
       const scrollTraverse = Math.min(1, Math.max(0, (sp - 0.2) / 0.6));
-      const finaleT = Math.max(0, (sp - 0.8) / 0.15); // 0 to 1 at the very bottom
-      
-      // X shift for layout balancing (derive phase from live ref value)
+      const finaleT = Math.max(0, (sp - 0.8) / 0.15); 
+
       const _isHero = sp < 0.1;
       const _isAbout = sp > 0.1 && sp <= 0.2;
       const _isTech = sp > 0.8 && sp < 0.95;
@@ -629,14 +646,12 @@ function MainStage({ scrollProgress, scrollRef, setActiveProject, activeProject,
 
       stageRef.current.position.x = THREE.MathUtils.lerp(stageRef.current.position.x, targetX, 0.05);
 
-      // 1. Pan the camera vertically DOWN the DNA
       const targetY = THREE.MathUtils.lerp(-(dnaHeight / 2), (dnaHeight / 2), scrollTraverse);
-      
-      // 2. Rotate the DNA mathematically to bring the active card exactly to the front (+Z)
+
       const currentLocalY = -targetY;
       const t = ((dnaHeight / 2) - currentLocalY) / dnaHeight;
-      const currentAngle = -t * Math.PI * 2 * dnaLoops; 
-      
+      const currentAngle = -t * Math.PI * 2 * dnaLoops;
+
       let targetRotationY = -currentAngle + (Math.PI / 2);
       let targetZ = 0;
       let targetYOffset = 0;
@@ -646,48 +661,42 @@ function MainStage({ scrollProgress, scrollRef, setActiveProject, activeProject,
       let targetRotX = 0;
       let targetRotZ = 0;
 
-      // APPLY FINALE EFFECTS
       if (finaleT > 0 && !isHero) {
         if (finaleEffect === 'Warp Tunnel') {
-          targetZ = finaleT * 18; // Push stage towards camera (pass through)
-          targetScaleX = 1 + finaleT * 3; // Open up the DNA
+          targetZ = finaleT * 18; 
+          targetScaleX = 1 + finaleT * 3; 
           targetScaleZ = 1 + finaleT * 3;
         } else if (finaleEffect === 'Nebula') {
-          targetScaleX = 1 + finaleT * 12; // Massive expansion into starfield
+          targetScaleX = 1 + finaleT * 12; 
           targetScaleZ = 1 + finaleT * 12;
         } else if (finaleEffect === 'Magnetic Fluid') {
-          // Bend DNA towards mouse pointer
           targetRotZ = state.pointer.x * finaleT * 1.5;
           targetRotX = -state.pointer.y * finaleT * 1.5;
         } else if (finaleEffect === 'Singularity') {
-          // Compress on X/Z and stretch on Y into a laser beam
           targetScaleX = Math.max(0.001, 1 - finaleT * 2);
           targetScaleZ = Math.max(0.001, 1 - finaleT * 2);
           targetScaleY = 1 + finaleT * 5;
         } else if (finaleEffect === 'Quantum Glitch') {
-          // Intense random teleportation and jitter
           targetRotX = (Math.random() - 0.5) * finaleT * 0.8;
           targetRotZ = (Math.random() - 0.5) * finaleT * 0.8;
           targetScaleX = 1 + (Math.random() - 0.5) * finaleT * 3;
           targetScaleZ = 1 + (Math.random() - 0.5) * finaleT * 3;
         } else if (finaleEffect === 'Cyber-Tornado') {
-          // Uncontrollable fast spinning
           targetRotationY += state.clock.getElapsedTime() * 15 * finaleT;
           targetScaleX = 1 + finaleT * 1.5;
           targetScaleZ = 1 + finaleT * 1.5;
         } else if (finaleEffect === 'Ascension') {
-          // Fly upwards into the sky
           targetYOffset = finaleT * 40;
         }
       }
 
       stageRef.current.position.y = THREE.MathUtils.lerp(stageRef.current.position.y, targetY + targetYOffset, 0.05);
       stageRef.current.position.z = THREE.MathUtils.lerp(stageRef.current.position.z, targetZ, 0.05);
-      
+
       stageRef.current.scale.x = THREE.MathUtils.lerp(stageRef.current.scale.x, targetScaleX, 0.05);
       stageRef.current.scale.y = THREE.MathUtils.lerp(stageRef.current.scale.y, targetScaleY, 0.05);
       stageRef.current.scale.z = THREE.MathUtils.lerp(stageRef.current.scale.z, targetScaleZ, 0.05);
-      
+
       stageRef.current.rotation.y = THREE.MathUtils.lerp(stageRef.current.rotation.y, targetRotationY, 0.05);
       stageRef.current.rotation.x = THREE.MathUtils.lerp(stageRef.current.rotation.x, targetRotX, 0.05);
       stageRef.current.rotation.z = THREE.MathUtils.lerp(stageRef.current.rotation.z, targetRotZ, 0.05);
@@ -697,31 +706,29 @@ function MainStage({ scrollProgress, scrollRef, setActiveProject, activeProject,
   const isDnaVisible = !isHero && !isAboutActive && scrollProgress <= 0.8;
 
   return (
-    <group ref={stageRef} position={[0, -(dnaHeight / 2), 0]} rotation={[0, Math.PI/2, 0]}>
-      {/* Morphing Elements */}
+    <group ref={stageRef} position={[0, -(dnaHeight / 2), 0]} rotation={[0, Math.PI / 2, 0]}>
       <ActiveTheoryCore visible={isHero || isAboutActive} positionY={dnaHeight / 2} />
-      
-      {/* Finale: Core Re-Assembly */}
-      <ActiveTheoryCore 
-        visible={(finaleEffect === 'Core Re-Assembly' && scrollProgress > 0.8) || isContactActive} 
-        positionY={-(dnaHeight / 2)} 
+
+      <ActiveTheoryCore
+        visible={(finaleEffect === 'Core Re-Assembly' && scrollProgress > 0.8) || isContactActive}
+        positionY={-(dnaHeight / 2)}
         shrinkToDot={isContactActive}
       />
       <OrbitingTechStack
-        visible={isTechStackActive} 
-        positionY={-(dnaHeight / 2)} 
+        visible={isTechStackActive}
+        positionY={-(dnaHeight / 2)}
       />
 
-      <DNAStrand 
-        visible={isDnaVisible} 
+      <DNAStrand
+        visible={isDnaVisible}
         dnaRadius={dnaRadius}
         dnaHeight={dnaHeight}
         dnaLoops={dnaLoops}
         particleCount={particleCount}
         scatterAmount={scatterAmount}
       />
-      <OrbitingCards 
-        visible={isDnaVisible} 
+      <OrbitingCards
+        visible={isDnaVisible}
         scrollProgress={scrollProgress}
         dnaHeight={dnaHeight}
         dnaRadius={dnaRadius}
@@ -773,16 +780,12 @@ const PROJECTS = [
   }
 ];
 
-
 export default function Experience() {
   const [scrollProgress, setScrollProgress] = useState(0);
   const [activeProject, setActiveProject] = useState<string | null>(null);
   const [transitionType, setTransitionType] = useState('implosion-ring');
   const [selectedProjData, setSelectedProjData] = useState<any>(null);
-
-  // scrollRef is always current — read by useFrame every frame (no React re-render needed)
   const scrollRef = useRef(0);
-  // lastPhaseRef prevents unnecessary React re-renders between phase boundaries
   const lastPhaseRef = useRef(-1);
 
   useEffect(() => {
@@ -828,14 +831,16 @@ export default function Experience() {
       st.kill();
       window.removeEventListener('scroll', onScroll);
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
-    <div className="relative bg-[#030305] text-[#e2e2e5] font-sans selection:bg-[#00e5ff] selection:text-[#030305] overflow-x-hidden" style={{ fontFamily: "'Inter', sans-serif" }}>
+    <div className="relative bg-[#07050F] text-[#e2e2e5] font-sans selection:bg-[#9B5DE5] selection:text-black overflow-x-hidden" style={{ fontFamily: "'Inter', sans-serif" }}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
-        html, body { background-color: #030305; scroll-behavior: smooth; overflow-x: hidden; width: 100%; }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&family=Syne:wght@400..800&display=swap');
+        html, body { background-color: #07050F; scroll-behavior: smooth; overflow-x: hidden; width: 100%; }
+        .font-display { font-family: 'Syne', sans-serif; }
+        .font-mono { font-family: 'Space Mono', monospace; }
       `}</style>
 
       {/* Fixed R3F Background - Entire 3D Scene */}
@@ -848,7 +853,7 @@ export default function Experience() {
         >
           <ambientLight intensity={0.5} />
           <directionalLight position={[10, 10, 5]} intensity={1.5} color="#ffffff" />
-          <pointLight position={[-10, -10, -5]} intensity={1.5} color="#00e5ff" />
+          <pointLight position={[-10, -10, -5]} intensity={1.5} color="#9B5DE5" />
 
           {/* Main Orchestrator for Globe/DNA Morphing and Positioning */}
           <MainStage scrollProgress={scrollProgress} scrollRef={scrollRef} setActiveProject={setActiveProject} activeProject={activeProject} transitionType={transitionType} />
@@ -870,26 +875,28 @@ export default function Experience() {
       />
 
       {/* Cinematic Vignette Overlay */}
-      <div className="fixed inset-0 pointer-events-none z-[5]" style={{ background: 'radial-gradient(circle at center, transparent 0%, rgba(3,3,5,0.8) 100%)' }}></div>
+      <div className="fixed inset-0 pointer-events-none z-[5]" style={{ background: 'radial-gradient(circle at center, transparent 0%, rgba(0,0,0,0.8) 100%)' }}></div>
 
       {/* Fixed Navbar */}
-      <nav className="fixed left-0 right-0 top-0 z-50 flex items-center justify-between px-6 py-6 md:px-12 bg-gradient-to-b from-[#030305]/90 to-transparent backdrop-blur-sm pointer-events-auto">
+      <nav className="fixed left-0 right-0 top-0 z-50 flex items-center justify-between px-6 py-6 md:px-12 bg-gradient-to-b from-black/90 to-transparent backdrop-blur-sm pointer-events-auto">
         <div className="flex items-center gap-2">
           <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M4 12L10 6V18L16 12" stroke="#00e5ff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M4 12L10 6V18L16 12" stroke="#9B5DE5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
-          <span className="text-xl font-medium text-[#00e5ff] tracking-wider">AXON</span>
+          <span className="text-xl tracking-wider text-white font-display">
+            <span className="font-bold">AKASH</span> <span className="font-light">YADUWANSHI</span>
+          </span>
         </div>
 
-        <div className="hidden md:flex items-center gap-8 text-[13px] tracking-widest uppercase text-white/50 font-medium">
-          <button onClick={() => window.scrollTo({top: 0, behavior: 'smooth'})} className="hover:text-white transition-colors cursor-pointer">Core</button>
-          <button onClick={() => window.scrollTo({top: window.innerHeight * 2.5, behavior: 'smooth'})} className="hover:text-white transition-colors cursor-pointer">Projects</button>
-          <button onClick={() => window.scrollTo({top: document.body.scrollHeight, behavior: 'smooth'})} className="hover:text-white transition-colors cursor-pointer">Network</button>
+        <div className="hidden md:flex items-center gap-8 text-[11px] tracking-[0.2em] uppercase text-white/50 font-mono">
+          <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="hover:text-white transition-colors cursor-pointer">Core</button>
+          <button onClick={() => window.scrollTo({ top: window.innerHeight * 2.5, behavior: 'smooth' })} className="hover:text-white transition-colors cursor-pointer">Projects</button>
+          <button onClick={() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' })} className="hover:text-white transition-colors cursor-pointer">Network</button>
         </div>
 
-        <button 
-          onClick={() => window.scrollTo({top: document.body.scrollHeight, behavior: 'smooth'})}
-          className="rounded-full bg-[#00e5ff]/10 border border-[#00e5ff]/30 px-6 py-2.5 text-[13px] tracking-widest uppercase font-medium text-[#00e5ff] transition-all hover:bg-[#00e5ff] hover:text-[#030305] shadow-[0_0_15px_rgba(0,229,255,0.15)]"
+        <button
+          onClick={() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' })}
+          className="rounded-full bg-[#9B5DE5]/10 border border-[#9B5DE5]/30 px-6 py-2.5 text-[11px] tracking-[0.2em] uppercase font-mono text-[#9B5DE5] transition-all hover:bg-[#9B5DE5] hover:text-black shadow-[0_0_15px_rgba(0,229,255,0.15)]"
         >
           Initiate
         </button>
@@ -898,29 +905,29 @@ export default function Experience() {
       {/* Scroll Progress Indicator */}
       <div className="fixed left-6 md:left-12 top-1/2 -translate-y-1/2 h-[40vh] w-[2px] bg-white/10 rounded-full z-50">
         <div
-          className="absolute top-0 left-0 w-full bg-gradient-to-b from-[#00e5ff] to-[#b026ff] rounded-full transition-all duration-200"
+          className="absolute top-0 left-0 w-full bg-gradient-to-b from-[#9B5DE5] to-[#b026ff] rounded-full transition-all duration-200"
           style={{ height: `${Math.max(0, scrollProgress * 100)}%` }}
         />
         <div
-          className="absolute left-1/2 -translate-x-1/2 h-3 w-3 rounded-full bg-[#00e5ff] shadow-[0_0_12px_#00e5ff] transition-all duration-200"
+          className="absolute left-1/2 -translate-x-1/2 h-3 w-3 rounded-full bg-[#9B5DE5] shadow-[0_0_12px_#9B5DE5] transition-all duration-200"
           style={{ top: `calc(${Math.max(0, scrollProgress * 100)}% - 6px)` }}
         />
       </div>
 
       {/* HTML Content Overlay - Completely Fixed to Viewport */}
       <div className="relative z-10 pointer-events-none">
-        
+
         {/* Absolute massive spacer to provide the scrollbar for the entire experience */}
         <div className="h-[1000vh]"></div>
 
         {/* Fixed Hero Overlay */}
         <div className="fixed inset-0 flex flex-col justify-center px-16 md:px-32 max-w-4xl pt-20 pointer-events-none">
           <div className={scrollProgress <= 0.1 ? "pointer-events-auto" : "pointer-events-none"} style={{ opacity: Math.max(0, 1 - (scrollProgress / 0.1)), transition: 'opacity 0.1s' }}>
-            <span className="text-[#00e5ff] font-mono text-[10px] md:text-xs tracking-[0.3em] uppercase mb-6 block">
+            <span className="text-[#9B5DE5] font-mono text-[10px] md:text-[11px] tracking-[0.3em] uppercase mb-6 block">
               Akash Yaduwanshi • AI Engineer
             </span>
-            <h1 className="text-5xl md:text-7xl font-light tracking-tight text-white mb-6 leading-[1.1]">
-              <span className="text-[#00e5ff] font-medium">Engineering intelligence</span> <br />
+            <h1 className="text-5xl md:text-7xl font-display font-bold tracking-tight text-white mb-6 leading-none">
+              Engineering intelligence <br />
               at the synaptic level
             </h1>
             <p className="text-xl md:text-2xl font-light text-white/50 leading-relaxed mb-12 max-w-2xl">
@@ -930,17 +937,17 @@ export default function Experience() {
         </div>
 
         {/* Fixed About Overlay */}
-        <div 
+        <div
           className="fixed inset-0 flex flex-col justify-center px-16 md:px-32 max-w-2xl pointer-events-none"
-          style={{ 
+          style={{
             opacity: (scrollProgress > 0.05 && scrollProgress <= 0.25) ? 1 : 0,
             transform: `translateY(${(scrollProgress > 0.05 && scrollProgress <= 0.25) ? '0px' : '20px'})`,
             transition: 'all 0.5s ease-out'
           }}
         >
           <div className={(scrollProgress > 0.05 && scrollProgress <= 0.25) ? "pointer-events-auto" : "pointer-events-none"}>
-            <span className="text-xs text-[#00e5ff] mb-3 block uppercase tracking-[0.2em]">Career Objective</span>
-            <h2 className="text-4xl md:text-5xl font-light text-white mb-6">
+            <span className="text-[10px] md:text-[11px] font-mono text-[#9B5DE5] mb-3 block uppercase tracking-[0.3em]">Career Objective</span>
+            <h2 className="text-4xl md:text-5xl font-display font-bold tracking-tight text-white mb-6">
               Engineering Mindset
             </h2>
             <p className="text-lg font-light text-white/60 leading-relaxed mb-6">
@@ -953,25 +960,25 @@ export default function Experience() {
         </div>
 
         {/* Fixed Tech Stack Overlay */}
-        <div 
+        <div
           className="fixed inset-0 flex flex-col justify-center px-16 md:px-32 max-w-2xl pointer-events-none"
-          style={{ 
+          style={{
             opacity: (scrollProgress > 0.75 && scrollProgress < 0.95) ? 1 : 0,
             transform: `translateY(${(scrollProgress > 0.75 && scrollProgress < 0.95) ? '0px' : '20px'})`,
             transition: 'all 0.5s ease-out'
           }}
         >
           <div className={(scrollProgress > 0.75 && scrollProgress < 0.95) ? "pointer-events-auto" : "pointer-events-none"}>
-            <span className="text-xs text-[#00e5ff] mb-3 block uppercase tracking-[0.2em]">Core Architecture</span>
-            <h2 className="text-4xl md:text-6xl font-light text-white mb-6">
+            <span className="text-[10px] md:text-[11px] font-mono text-[#9B5DE5] mb-3 block uppercase tracking-[0.3em]">Core Architecture</span>
+            <h2 className="text-4xl md:text-6xl font-display font-bold tracking-tight text-white mb-6">
               Neural Tech Stack
             </h2>
             <p className="text-xl font-light text-white/50 leading-relaxed mb-8">
               Engineered with an advanced toolkit for deep learning, generative AI, and high-performance neural networks.
             </p>
-            <a 
-              href="#architecture" 
-              className="inline-block border border-white/20 px-8 py-3 rounded-full text-xs tracking-[0.2em] uppercase hover:bg-white hover:text-black transition-colors duration-300"
+            <a
+              href="#architecture"
+              className="inline-block border border-white/20 px-8 py-3 rounded-full font-mono text-[11px] tracking-[0.2em] uppercase hover:bg-white hover:text-black transition-colors duration-300"
             >
               View Architecture
             </a>
@@ -979,54 +986,54 @@ export default function Experience() {
         </div>
 
         {/* Fixed Contact Overlay */}
-        <div 
+        <div
           className="fixed inset-0 flex flex-col justify-center items-center text-center px-16 md:px-32 pointer-events-none"
-          style={{ 
+          style={{
             opacity: scrollProgress >= 0.95 ? 1 : 0,
             transform: `translateY(${scrollProgress >= 0.95 ? '0px' : '20px'})`,
             transition: 'all 0.5s ease-out'
           }}
         >
           <div className={scrollProgress >= 0.95 ? "pointer-events-auto" : "pointer-events-none"}>
-            <h2 className="text-6xl md:text-8xl font-light text-white tracking-tighter mb-4 drop-shadow-[0_0_20px_rgba(0,229,255,0.3)]">
+            <h2 className="text-6xl md:text-8xl font-display font-bold text-white tracking-tighter mb-4 drop-shadow-[0_0_20px_rgba(0,229,255,0.3)] leading-none">
               ESTABLISH
             </h2>
-            <h2 className="text-6xl md:text-8xl font-medium text-[#00e5ff] tracking-tighter mb-16 drop-shadow-[0_0_30px_rgba(0,229,255,0.5)]">
+            <h2 className="text-6xl md:text-8xl font-display font-bold text-[#9B5DE5] tracking-tighter mb-16 drop-shadow-[0_0_30px_rgba(0,229,255,0.5)] leading-none">
               CONNECTION
             </h2>
 
             <div className="flex gap-6 justify-center">
-              <a 
-                href="mailto:aakashyaduwanshi0470@gmail.com" 
-                className="group relative overflow-hidden rounded-full border border-white/20 bg-black/40 backdrop-blur-xl px-10 py-5 transition-all hover:border-[#00e5ff]/50 hover:shadow-[0_0_40px_rgba(0,229,255,0.2)]"
+              <a
+                href="mailto:aakashyaduwanshi0470@gmail.com"
+                className="group relative overflow-hidden rounded-full border border-white/20 bg-black/40 backdrop-blur-xl px-10 py-5 transition-all hover:border-[#9B5DE5]/50 hover:shadow-[0_0_40px_rgba(0,229,255,0.2)]"
               >
-                <div className="absolute inset-0 bg-gradient-to-r from-[#00e5ff]/0 via-[#00e5ff]/10 to-[#00e5ff]/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700 ease-in-out" />
+                <div className="absolute inset-0 bg-gradient-to-r from-[#9B5DE5]/0 via-[#9B5DE5]/10 to-[#9B5DE5]/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700 ease-in-out" />
                 <span className="text-sm tracking-[0.3em] uppercase text-white font-medium">Email</span>
               </a>
 
-              <a 
-                href="https://github.com/unshakensoul17" 
+              <a
+                href="https://github.com/unshakensoul17"
                 target="_blank" rel="noreferrer"
-                className="group relative overflow-hidden rounded-full border border-white/20 bg-black/40 backdrop-blur-xl px-10 py-5 transition-all hover:border-[#ff2a00]/50 hover:shadow-[0_0_40px_rgba(255,42,0,0.2)]"
+                className="group relative overflow-hidden rounded-full border border-white/20 bg-black/40 backdrop-blur-xl px-10 py-5 transition-all hover:border-[#F15BB5]/50 hover:shadow-[0_0_40px_rgba(255,42,0,0.2)]"
               >
-                <div className="absolute inset-0 bg-gradient-to-r from-[#ff2a00]/0 via-[#ff2a00]/10 to-[#ff2a00]/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700 ease-in-out" />
+                <div className="absolute inset-0 bg-gradient-to-r from-[#F15BB5]/0 via-[#F15BB5]/10 to-[#F15BB5]/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700 ease-in-out" />
                 <span className="text-sm tracking-[0.3em] uppercase text-white font-medium">GitHub</span>
               </a>
 
-              <a 
-                href="https://linkedin.com/in/akash-yaduwanshi-902a3b352" 
+              <a
+                href="https://linkedin.com/in/akash-yaduwanshi-902a3b352"
                 target="_blank" rel="noreferrer"
-                className="group relative overflow-hidden rounded-full border border-white/20 bg-black/40 backdrop-blur-xl px-10 py-5 transition-all hover:border-[#00e5ff]/50 hover:shadow-[0_0_40px_rgba(0,229,255,0.2)]"
+                className="group relative overflow-hidden rounded-full border border-white/20 bg-black/40 backdrop-blur-xl px-10 py-5 transition-all hover:border-[#9B5DE5]/50 hover:shadow-[0_0_40px_rgba(0,229,255,0.2)]"
               >
-                <div className="absolute inset-0 bg-gradient-to-r from-[#00e5ff]/0 via-[#00e5ff]/10 to-[#00e5ff]/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700 ease-in-out" />
+                <div className="absolute inset-0 bg-gradient-to-r from-[#9B5DE5]/0 via-[#9B5DE5]/10 to-[#9B5DE5]/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700 ease-in-out" />
                 <span className="text-sm tracking-[0.3em] uppercase text-white font-medium">LinkedIn</span>
               </a>
-              
-              <a 
-                href="mailto:aakashyaduwanshi0470@gmail.com?subject=Requesting%20Resume%20-%20Akash%20Yaduwanshi" 
-                className="group relative overflow-hidden rounded-full border border-white/20 bg-[#00e5ff]/10 backdrop-blur-xl px-10 py-5 transition-all hover:bg-[#00e5ff]/20 hover:border-[#00e5ff] hover:shadow-[0_0_40px_rgba(0,229,255,0.4)]"
+
+              <a
+                href="mailto:aakashyaduwanshi0470@gmail.com?subject=Requesting%20Resume%20-%20Akash%20Yaduwanshi"
+                className="group relative overflow-hidden rounded-full border border-white/20 bg-[#9B5DE5]/10 backdrop-blur-xl px-10 py-5 transition-all hover:bg-[#9B5DE5]/20 hover:border-[#9B5DE5] hover:shadow-[0_0_40px_rgba(0,229,255,0.4)]"
               >
-                <span className="text-sm tracking-[0.3em] uppercase text-[#00e5ff] font-bold">Request Resume</span>
+                <span className="text-sm tracking-[0.3em] uppercase text-[#9B5DE5] font-bold">Request Resume</span>
               </a>
             </div>
           </div>
@@ -1037,40 +1044,40 @@ export default function Experience() {
       {/* Cinematic Active Project Overlay */}
 
 
-      <div 
+      <div
         className={`fixed inset-0 z-[100] pointer-events-none flex items-center justify-center transition-all ease-in-out ${activeProject ? 'duration-[2000ms] opacity-100' : 'duration-700 opacity-0'}`}
       >
         {/* Deep darkening background vignette - wait for card to expand before darkening */}
-        <div 
+        <div
           className={`absolute inset-0 transition-all ${activeProject ? 'duration-[1500ms] delay-[400ms] opacity-100 backdrop-blur-xl' : 'duration-500 delay-0 opacity-0 backdrop-blur-none'}`}
           style={{ background: 'radial-gradient(circle at center, rgba(3,3,5,0.7) 0%, rgba(3,3,5,0.98) 100%)' }}
         />
 
         <div className={`relative w-full h-full max-w-[1400px] mx-auto px-8 md:px-16 flex flex-col md:flex-row items-center justify-between gap-12 transition-all cubic-bezier(0.16, 1, 0.3, 1) ${activeProject ? 'duration-[1200ms] delay-[800ms] pointer-events-auto scale-100 opacity-100 translate-y-0' : 'duration-[400ms] delay-0 pointer-events-none scale-[0.97] opacity-0 translate-y-8'}`}>
-          
+
           {/* Left Side: Details & Close */}
           <div className="w-full md:w-[35%] flex flex-col items-start text-left z-10 shrink-0">
             <h2 className="text-5xl md:text-6xl font-light text-white mb-3 tracking-tight">
               {selectedProjData?.title}
             </h2>
-            <p className="text-xs text-[#00e5ff] uppercase tracking-[0.2em] font-medium mb-8">
+            <p className="text-xs text-[#9B5DE5] uppercase tracking-[0.2em] font-medium mb-8">
               {selectedProjData?.tech}
             </p>
             <p className="text-sm md:text-base font-light text-white/60 leading-relaxed mb-10 max-w-sm">
               {selectedProjData?.desc}
             </p>
-            
+
             <div className="flex flex-col gap-6">
-              <a 
+              <a
                 href={selectedProjData?.link}
                 target="_blank" rel="noreferrer"
-                className="group w-fit relative overflow-hidden rounded-full border border-white/20 bg-white/5 backdrop-blur-sm px-8 py-3 transition-all hover:border-[#00e5ff]/50 hover:shadow-[0_0_20px_rgba(0,229,255,0.2)]"
+                className="group w-fit relative overflow-hidden rounded-full border border-white/20 bg-white/5 backdrop-blur-sm px-8 py-3 transition-all hover:border-[#9B5DE5]/50 hover:shadow-[0_0_20px_rgba(0,229,255,0.2)]"
               >
-                <div className="absolute inset-0 bg-gradient-to-r from-[#00e5ff]/0 via-[#00e5ff]/10 to-[#00e5ff]/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700 ease-in-out" />
-                <span className="text-[10px] tracking-[0.2em] uppercase text-white font-medium group-hover:text-[#00e5ff] transition-colors relative z-10">Project Link</span>
+                <div className="absolute inset-0 bg-gradient-to-r from-[#9B5DE5]/0 via-[#9B5DE5]/10 to-[#9B5DE5]/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700 ease-in-out" />
+                <span className="text-[10px] tracking-[0.2em] uppercase text-white font-medium group-hover:text-[#9B5DE5] transition-colors relative z-10">Project Link</span>
               </a>
 
-              <button 
+              <button
                 onClick={() => setActiveProject(null)}
                 className="text-[10px] text-white/50 tracking-[0.2em] uppercase hover:text-white transition-colors flex items-center gap-3 mt-4"
               >
@@ -1081,43 +1088,43 @@ export default function Experience() {
 
           {/* Right Side: Massive Display Monitor */}
           <div className="flex-1 w-full h-[50vh] md:h-[75vh] bg-[#020203] border border-white/5 rounded-2xl md:rounded-[2rem] shadow-[0_0_100px_rgba(0,0,0,0.8)] flex items-center justify-center overflow-hidden relative group">
-             {/* Internal monitor glow */}
-             <div className="absolute inset-0 bg-gradient-to-tr from-[#00e5ff]/[0.02] to-transparent pointer-events-none" />
-             
-             {/* Decorative Monitor Frame elements */}
-             <div className="absolute top-6 right-6 w-1.5 h-1.5 rounded-full bg-white/20" />
-             <div className="absolute bottom-6 left-1/2 -translate-x-1/2 w-16 h-1 rounded-full bg-white/10" />
-             <div className="absolute top-0 left-0 w-full h-full border border-white/[0.02] rounded-[2rem] pointer-events-none" />
-             
-             {/* Placeholder for project visual - The actual image */}
-             <div className="relative w-full h-full flex items-center justify-center p-4">
-               {/* Noise effect */}
-               <div className="absolute inset-0 opacity-10 pointer-events-none" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noiseFilter%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.85%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noiseFilter)%22/%3E%3C/svg%3E")' }} />
-               
-               {/* Project Image */}
-               {selectedProjData?.image && (
-                 <img 
-                   src={selectedProjData.image} 
-                   alt={selectedProjData.title}
-                   className="w-full h-full object-cover rounded-xl border border-white/10 opacity-90 transition-all duration-1000"
-                   style={{
-                     filter: 'contrast(1.1) brightness(0.9) drop-shadow(0 0 40px rgba(0, 229, 255, 0.15))',
-                   }}
-                 />
-               )}
-               
-               {/* Center Logo/Visual Overlay */}
-               {!selectedProjData?.image && (
-                 <div className="flex flex-col items-center gap-6 opacity-30 group-hover:opacity-60 transition-opacity duration-700">
-                    <div className="w-16 h-16 border border-[#00e5ff]/50 rounded-xl flex items-center justify-center rotate-45 group-hover:rotate-90 transition-all duration-1000">
-                      <div className="w-8 h-8 border border-white/50 rounded-sm -rotate-45 group-hover:-rotate-90 transition-all duration-1000" />
-                    </div>
-                    <div className="text-[#00e5ff] font-mono text-[10px] tracking-[0.4em] uppercase">
-                      Neural Link Active
-                    </div>
-                 </div>
-               )}
-             </div>
+            {/* Internal monitor glow */}
+            <div className="absolute inset-0 bg-gradient-to-tr from-[#9B5DE5]/[0.02] to-transparent pointer-events-none" />
+
+            {/* Decorative Monitor Frame elements */}
+            <div className="absolute top-6 right-6 w-1.5 h-1.5 rounded-full bg-white/20" />
+            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 w-16 h-1 rounded-full bg-white/10" />
+            <div className="absolute top-0 left-0 w-full h-full border border-white/[0.02] rounded-[2rem] pointer-events-none" />
+
+            {/* Placeholder for project visual - The actual image */}
+            <div className="relative w-full h-full flex items-center justify-center p-4">
+              {/* Noise effect */}
+              <div className="absolute inset-0 opacity-10 pointer-events-none" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noiseFilter%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.85%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noiseFilter)%22/%3E%3C/svg%3E")' }} />
+
+              {/* Project Image */}
+              {selectedProjData?.image && (
+                <img
+                  src={selectedProjData.image}
+                  alt={selectedProjData.title}
+                  className="w-full h-full object-cover rounded-xl border border-white/10 opacity-90 transition-all duration-1000"
+                  style={{
+                    filter: 'contrast(1.1) brightness(0.9) drop-shadow(0 0 40px rgba(0, 229, 255, 0.15))',
+                  }}
+                />
+              )}
+
+              {/* Center Logo/Visual Overlay */}
+              {!selectedProjData?.image && (
+                <div className="flex flex-col items-center gap-6 opacity-30 group-hover:opacity-60 transition-opacity duration-700">
+                  <div className="w-16 h-16 border border-[#9B5DE5]/50 rounded-xl flex items-center justify-center rotate-45 group-hover:rotate-90 transition-all duration-1000">
+                    <div className="w-8 h-8 border border-white/50 rounded-sm -rotate-45 group-hover:-rotate-90 transition-all duration-1000" />
+                  </div>
+                  <div className="text-[#9B5DE5] font-mono text-[10px] tracking-[0.4em] uppercase">
+                    Neural Link Active
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
         </div>

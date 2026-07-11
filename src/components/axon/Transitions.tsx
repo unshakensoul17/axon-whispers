@@ -349,27 +349,23 @@ export function ImplosionRing({ color }: { color: string }) {
 // Scratch vector for ShatteredGlass — eliminates 800 allocations/frame
 const _stv = new THREE.Vector3();
 
-// 8. Shattered Glass
-export function ShatteredGlass() {
+export function ShatteredGlass({ color = "#ffffff" }: { color?: string }) {
   const instancedRef = useRef<THREE.InstancedMesh>(null);
-  const count = 400;
+  const count = 50;
 
   const dummy = useMemo(() => new THREE.Object3D(), []);
   const shards = useMemo(() => {
     return Array.from({ length: count }, () => {
-      const theta = Math.random() * Math.PI * 2;
-      const phi = Math.acos((Math.random() * 2) - 1);
-      const speed = 5 + Math.random() * 10;
+      const x = (Math.random() - 0.5) * 3.8;
+      const y = (Math.random() - 0.5) * 2.8;
+      const z = (Math.random() - 0.5) * 0.5;
       return {
-        pos: new THREE.Vector3(0, 0, 0),
-        vel: new THREE.Vector3(
-          Math.sin(phi) * Math.cos(theta) * speed,
-          Math.sin(phi) * Math.sin(theta) * speed,
-          Math.cos(phi) * speed
-        ),
+        pos: new THREE.Vector3(x, y, z),
+        vel: new THREE.Vector3(x, y, z).normalize().multiplyScalar(3 + Math.random() * 4),
         rot: new THREE.Vector3(Math.random(), Math.random(), Math.random()),
-        rotSpeed: new THREE.Vector3(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).multiplyScalar(10),
-        scale: Math.random() * 0.15 + 0.05
+        rotSpeed: new THREE.Vector3(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).multiplyScalar(15),
+        scale: Math.random() * 0.3 + 0.1,
+        life: 0
       };
     });
   }, [count]);
@@ -377,12 +373,23 @@ export function ShatteredGlass() {
   useFrame((_, delta) => {
     if (!instancedRef.current) return;
     shards.forEach((shard, i) => {
-      // Use scratch vector instead of .clone() — eliminates 2 allocations per shard per frame
-      _stv.copy(shard.vel).multiplyScalar(delta);
-      shard.pos.add(_stv);
+      shard.life += delta;
+      
+      if (shard.life < 0.2) {
+        // Explode outward
+        _stv.copy(shard.vel).multiplyScalar(delta);
+        shard.pos.add(_stv);
+      } else {
+        // Implode gravity well
+        shard.vel.add(shard.pos.clone().normalize().multiplyScalar(-15 * delta));
+        shard.vel.multiplyScalar(0.9); // friction
+        _stv.copy(shard.vel).multiplyScalar(delta);
+        shard.pos.add(_stv);
+        shard.scale = Math.max(0.001, shard.scale - delta * 0.4);
+      }
+      
       _stv.copy(shard.rotSpeed).multiplyScalar(delta);
       shard.rot.add(_stv);
-      shard.vel.multiplyScalar(0.95);
       
       dummy.position.copy(shard.pos);
       dummy.rotation.set(shard.rot.x, shard.rot.y, shard.rot.z);
@@ -396,7 +403,7 @@ export function ShatteredGlass() {
   return (
     <instancedMesh ref={instancedRef} args={[undefined, undefined, count]}>
       <tetrahedronGeometry args={[1, 0]} />
-      <meshPhysicalMaterial color="#ffffff" transmission={0.9} opacity={1} transparent metalness={0.5} roughness={0.1} />
+      <meshPhysicalMaterial color={color} transmission={0.9} opacity={1} transparent metalness={0.6} roughness={0.1} />
     </instancedMesh>
   );
 }
