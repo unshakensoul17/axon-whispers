@@ -25,8 +25,8 @@ gsap.registerPlugin(ScrollTrigger);
 const FluidShaderMaterial = shaderMaterial(
   {
     uTime: 0,
-    uColor1: new THREE.Color("#9B5DE5"),
-    uColor2: new THREE.Color("#F15BB5"),
+    uColor1: new THREE.Color("#B026FF"),
+    uColor2: new THREE.Color("#FF2D78"),
   },
   // Vertex Shader: Fast 3D Simplex Noise
   `
@@ -482,14 +482,14 @@ function OrbitingCardItem({ proj, i, dnaHeight, dnaRadius, dnaLoops, cardYSpacin
         {isShattering && <ShatteredGlass color={cardTint} />}
 
         <group visible={!isShattering}>
-          <RoundedBox args={[4.2, 3.2, 0.15]} radius={0.15} smoothness={4}>
+          <RoundedBox args={[4.2, 3.2, 0.15]} radius={0.15} smoothness={typeof window !== 'undefined' && window.innerWidth < 768 ? 2 : 4}>
             <meshPhysicalMaterial
               ref={glassMaterialRef}
               color="#000000"
               emissive="#000000"
               emissiveIntensity={0.0}
               transparent={true}
-              opacity={0.35}
+              opacity={0.45}
               metalness={0.7}
               roughness={0.1}
               depthWrite={false}
@@ -686,7 +686,14 @@ function MainStage({ scrollProgress, scrollRef, setActiveProject, activeProject,
   const stageRef = useRef<THREE.Group>(null);
   const isHero = scrollProgress < 0.1;
 
-  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+  // Cache isMobile in a ref — avoid calling window.innerWidth every frame
+  const isMobileRef = useRef(typeof window !== 'undefined' && window.innerWidth < 768);
+  useEffect(() => {
+    const onResize = () => { isMobileRef.current = window.innerWidth < 768; };
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+  const isMobile = isMobileRef.current;
 
   const dnaRadius = isMobile ? 1.0 : 1.7;
   const dnaHeight = 25.0; 
@@ -707,6 +714,8 @@ function MainStage({ scrollProgress, scrollRef, setActiveProject, activeProject,
   const isContactActive = scrollProgress >= 0.95;
 
   useFrame((state) => {
+    // Opt 4: Skip all 3D computations while project overlay is open (scene is hidden anyway)
+    if (activeProject) return;
     if (stageRef.current) {
       const sp = scrollRef.current;
       const scrollTraverse = Math.min(1, Math.max(0, (sp - 0.2) / 0.6));
@@ -802,7 +811,7 @@ export function BackgroundConstellation() {
 
   const { points, lines } = useMemo(() => {
     const p = [];
-    const count = 1500; // Dense constellation
+    const count = 2800; // Max density for 1080p AMOLED
     const radius = 35; // Spread wide to cover screen
 
     for (let i = 0; i < count; i++) {
@@ -821,7 +830,7 @@ export function BackgroundConstellation() {
     const l = [];
     for (let i = 0; i < count; i++) {
       for (let j = i + 1; j < count; j++) {
-        if (p[i].distanceTo(p[j]) < 2.5) {
+        if (p[i].distanceTo(p[j]) < 2.0) {  // Reduced from 2.5 → 2.0 = ~30% fewer lines, same visual density
           l.push(p[i].x, p[i].y, p[i].z);
           l.push(p[j].x, p[j].y, p[j].z);
         }
@@ -860,13 +869,13 @@ export function BackgroundConstellation() {
         <bufferGeometry>
           <bufferAttribute attach="attributes-position" args={[points, 3]} />
         </bufferGeometry>
-        <pointsMaterial color="#00BBF9" size={0.06} transparent opacity={0.6} sizeAttenuation={true} blending={THREE.AdditiveBlending} depthWrite={false} />
+        <pointsMaterial color="#00D4FF" size={0.05} transparent opacity={0.7} sizeAttenuation={true} blending={THREE.AdditiveBlending} depthWrite={false} />
       </points>
       <lineSegments>
         <bufferGeometry>
           <bufferAttribute attach="attributes-position" args={[lines, 3]} />
         </bufferGeometry>
-        <lineBasicMaterial color="#9B5DE5" transparent opacity={0.15} blending={THREE.AdditiveBlending} depthWrite={false} />
+        <lineBasicMaterial color="#B026FF" transparent opacity={0.10} blending={THREE.AdditiveBlending} depthWrite={false} />
       </lineSegments>
     </group>
   );
@@ -930,10 +939,18 @@ export default function Experience() {
   }, []);
 
   return (
-    <div className="relative bg-[#07050F] text-[#e2e2e5] font-sans selection:bg-[#9B5DE5] selection:text-black overflow-x-hidden" style={{ fontFamily: "'Inter', sans-serif" }}>
+    <div className="relative bg-black text-[#e2e2e5] font-sans selection:bg-[#B026FF] selection:text-black overflow-x-hidden" style={{ fontFamily: "'Inter', sans-serif" }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&family=Syne:wght@400..800&display=swap');
-        html, body { background-color: #07050F; scroll-behavior: smooth; overflow-x: hidden; width: 100%; }
+        html, body { 
+          background-color: #000000; 
+          scroll-behavior: smooth; 
+          overflow-x: hidden; 
+          width: 100%; 
+          -webkit-font-smoothing: antialiased;
+          -moz-osx-font-smoothing: grayscale;
+          text-rendering: optimizeLegibility;
+        }
         .font-display { font-family: 'Syne', sans-serif; }
         .font-mono { font-family: 'Space Mono', monospace; }
       `}</style>
@@ -949,7 +966,8 @@ export default function Experience() {
         <Canvas 
           className="pointer-events-none" 
           camera={{ position: [0, 0, isMobile ? 18 : 12], fov: 45 }}
-          gl={{ antialias: false, powerPreference: "high-performance" }}
+          gl={{ antialias: true, powerPreference: "high-performance" }}
+          dpr={[1, 2]}
         >
           <ambientLight intensity={0.5} />
           <directionalLight position={[10, 10, 5]} intensity={1.5} color="#ffffff" />
@@ -961,8 +979,8 @@ export default function Experience() {
           <MainStage scrollProgress={scrollProgress} scrollRef={scrollRef} setActiveProject={setActiveProject} activeProject={activeProject} transitionType={transitionType} />
 
           <EffectComposer>
-            {/* height cap limits Bloom's internal render resolution — big perf win at 1440p+ */}
-            <Bloom intensity={1.4} luminanceThreshold={0.2} luminanceSmoothing={0.5} mipmapBlur={true} height={350} />
+            {/* Lower Bloom height on mobile to save a full render pass */}
+            <Bloom intensity={1.0} luminanceThreshold={0.15} luminanceSmoothing={0.4} mipmapBlur={!isMobile} height={isMobile ? 300 : 600} />
           </EffectComposer>
         </Canvas>
       </div>
