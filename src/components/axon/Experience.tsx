@@ -1,9 +1,14 @@
-import { useEffect, useState, useRef, useMemo } from "react";
+import { useEffect, useState, useRef, useMemo, useCallback } from "react";
 import { Canvas, useFrame, extend } from "@react-three/fiber";
-import { OrbitControls, Sphere, Html, shaderMaterial, Instances, Instance, RoundedBox } from "@react-three/drei";
-import { EffectComposer, Bloom, Noise } from "@react-three/postprocessing";
+import { OrbitControls, Sphere, Html, shaderMaterial, Instances, Instance, RoundedBox, Text, Billboard } from "@react-three/drei";
+import { EffectComposer, Bloom } from "@react-three/postprocessing";
 import * as THREE from "three";
+import gsap from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { Terminal, Brain, Cpu, Flame, Box, Zap, Network, Sparkles, MessageSquare, Layers, Eye, Database, Code } from 'lucide-react';
+import { SmokeBlast, NeonDust, BlackholeBomb, HyperWarp, MatrixRain, CosmicVortex, ImplosionRing, ShatteredGlass, GlitchBlocks, GridSnap } from './Transitions';
+
+gsap.registerPlugin(ScrollTrigger);
 
 // ==========================================
 // PURE THREE.JS GLSL CUSTOM SHADER
@@ -108,6 +113,58 @@ declare global {
   }
 }
 
+// Module-level scratch Vector3 — reused by ALL useFrame calls.
+const _sv = new THREE.Vector3();
+
+// ----------------------------------------------------------
+// Lightweight spring — gives cursor tracking elastic weight.
+// ----------------------------------------------------------
+class Spring {
+  stiffness: number; damping: number; velocity: number; value: number; target: number;
+  constructor(stiffness = 0.08, damping = 0.82) {
+    this.stiffness = stiffness; this.damping = damping;
+    this.velocity = 0; this.value = 0; this.target = 0;
+  }
+  update() {
+    const force = (this.target - this.value) * this.stiffness;
+    this.velocity = (this.velocity + force) * this.damping;
+    this.value += this.velocity;
+    return this.value;
+  }
+}
+
+// ----------------------------------------------------------
+// DNA vertex / fragment shaders — renders as GPU point sprites
+// (1 draw call vs 1500 instanced meshes)
+// ----------------------------------------------------------
+const dnaVertGLSL = `
+  attribute float aSize;
+  attribute vec3 aColor;
+  varying vec3 vColor;
+  varying float vAlpha;
+  void main() {
+    vColor = aColor;
+    vec4 mv = modelViewMatrix * vec4(position, 1.0);
+    // perspective-correct point size
+    gl_PointSize = aSize * (280.0 / -mv.z);
+    gl_Position = projectionMatrix * mv;
+    // fade near camera
+    vAlpha = smoothstep(0.0, 4.0, -mv.z);
+  }
+`;
+const dnaFragGLSL = `
+  varying vec3 vColor;
+  varying float vAlpha;
+  void main() {
+    // discard corners → perfect circle sprite
+    float d = length(gl_PointCoord - 0.5);
+    if (d > 0.5) discard;
+    // soft glow falloff from centre
+    float alpha = (1.0 - smoothstep(0.2, 0.5, d)) * vAlpha;
+    gl_FragColor = vec4(vColor, alpha);
+  }
+`;
+
 // ---------------------------------------------------------
 // 3D Point-Cloud DNA Bone Structure
 // ---------------------------------------------------------
@@ -120,89 +177,84 @@ function DNAStrand({ visible, dnaRadius, dnaHeight, dnaLoops, particleCount, sca
   scatterAmount: number;
 }) {
   const groupRef = useRef<THREE.Group>(null);
+  const pointsRef = useRef<THREE.Points>(null);
 
-  const particles = useMemo(() => {
-    const points = [];
-    
-    // 1. Generate Backbone Particles
+  // Build geometry buffers once — positions, colours, sizes
+  const { posArray, colArray, sizeArray, total } = useMemo(() => {
+    const pts: number[] = [], cols: number[] = [], sizes: number[] = [];
+    const cRed  = new THREE.Color("#ff2a00").multiplyScalar(1.5);
+    const cCyan = new THREE.Color("#00e5ff").multiplyScalar(1.5);
+    const cA = new THREE.Color(), cB = new THREE.Color();
+
+    // Backbone — two helices
     for (let i = 0; i < particleCount; i++) {
       const t = i / particleCount;
-      const angle = -t * Math.PI * 2 * dnaLoops; 
-      const y = (dnaHeight / 2) - (t * dnaHeight); 
-      
-      points.push({
-        position: new THREE.Vector3(
-          Math.cos(angle) * dnaRadius + (Math.random() - 0.5) * scatterAmount,
-          y + (Math.random() - 0.5) * scatterAmount,
-          Math.sin(angle) * dnaRadius + (Math.random() - 0.5) * scatterAmount
-        ),
-        color: new THREE.Color("#ff2a00").multiplyScalar(1.5),
-        scale: Math.random() * 0.8 + 0.4
-      });
-
-      points.push({
-        position: new THREE.Vector3(
-          Math.cos(angle + Math.PI) * dnaRadius + (Math.random() - 0.5) * scatterAmount,
-          y + (Math.random() - 0.5) * scatterAmount,
-          Math.sin(angle + Math.PI) * dnaRadius + (Math.random() - 0.5) * scatterAmount
-        ),
-        color: new THREE.Color("#00e5ff").multiplyScalar(1.5),
-        scale: Math.random() * 0.8 + 0.4
-      });
+      const angle = -t * Math.PI * 2 * dnaLoops;
+      const y = dnaHeight / 2 - t * dnaHeight;
+      const sc = scatterAmount;
+      // strand A
+      pts.push(Math.cos(angle)*dnaRadius + (Math.random()-.5)*sc, y+(Math.random()-.5)*sc, Math.sin(angle)*dnaRadius+(Math.random()-.5)*sc);
+      cols.push(cRed.r, cRed.g, cRed.b);
+      sizes.push(Math.random()*4+3);
+      // strand B
+      pts.push(Math.cos(angle+Math.PI)*dnaRadius+(Math.random()-.5)*sc, y+(Math.random()-.5)*sc, Math.sin(angle+Math.PI)*dnaRadius+(Math.random()-.5)*sc);
+      cols.push(cCyan.r, cCyan.g, cCyan.b);
+      sizes.push(Math.random()*4+3);
     }
 
-    // 2. Generate Base Pair "Rungs" (The strings connecting the DNA)
-    // Create rungs every so often along the DNA
-    const rungCount = Math.floor(dnaLoops * 24); // 24 rungs per loop
-    const particlesPerRung = 10; // Number of glowing dots connecting the two sides
-
+    // Rungs — gradient dots connecting the helices
+    const rungCount = Math.floor(dnaLoops * 24);
+    const perRung = 10;
     for (let r = 0; r < rungCount; r++) {
       const t = r / rungCount;
       const angle = -t * Math.PI * 2 * dnaLoops;
-      const y = (dnaHeight / 2) - (t * dnaHeight);
-
-      const p1 = new THREE.Vector3(Math.cos(angle) * dnaRadius, y, Math.sin(angle) * dnaRadius);
-      const p2 = new THREE.Vector3(Math.cos(angle + Math.PI) * dnaRadius, y, Math.sin(angle + Math.PI) * dnaRadius);
-
-      for (let p = 1; p < particlesPerRung; p++) {
-        const lerpFactor = p / particlesPerRung;
-        const pos = p1.clone().lerp(p2, lerpFactor);
-        
-        // Add a slight scatter to the rungs so they look organic and energetic
-        pos.x += (Math.random() - 0.5) * (scatterAmount * 0.4);
-        pos.y += (Math.random() - 0.5) * (scatterAmount * 0.4);
-        pos.z += (Math.random() - 0.5) * (scatterAmount * 0.4);
-
-        // Gradient color from Red to Cyan across the string
-        const rungColor = new THREE.Color("#ff2a00").lerp(new THREE.Color("#00e5ff"), lerpFactor).multiplyScalar(1.3);
-
-        points.push({
-          position: pos,
-          color: rungColor,
-          scale: Math.random() * 0.4 + 0.2 // Slightly smaller particles for the inner strings
-        });
+      const y = dnaHeight / 2 - t * dnaHeight;
+      const ax = Math.cos(angle)*dnaRadius, az = Math.sin(angle)*dnaRadius;
+      const bx = Math.cos(angle+Math.PI)*dnaRadius, bz = Math.sin(angle+Math.PI)*dnaRadius;
+      for (let p = 1; p < perRung; p++) {
+        const f = p / perRung;
+        const sc2 = scatterAmount * 0.4;
+        pts.push(ax+(bx-ax)*f+(Math.random()-.5)*sc2, y+(Math.random()-.5)*sc2, az+(bz-az)*f+(Math.random()-.5)*sc2);
+        cA.copy(cRed); cB.copy(cCyan); cA.lerp(cB, f).multiplyScalar(1.3);
+        cols.push(cA.r, cA.g, cA.b);
+        sizes.push(Math.random()*2+1.5);
       }
     }
 
-    return points;
+    return {
+      posArray: new Float32Array(pts),
+      colArray: new Float32Array(cols),
+      sizeArray: new Float32Array(sizes),
+      total: pts.length / 3,
+    };
   }, [dnaRadius, dnaHeight, dnaLoops, particleCount, scatterAmount]);
+
+  // Reliable PointsMaterial with vertex colors — no custom attributes, works everywhere
+  const mat = useMemo(() => new THREE.PointsMaterial({
+    size: 0.09,
+    vertexColors: true,
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    sizeAttenuation: true,
+  }), []);
 
   useFrame(() => {
     if (groupRef.current) {
-      const targetScale = visible ? 1 : 0.001;
-      groupRef.current.scale.lerp(new THREE.Vector3(targetScale, targetScale, targetScale), 0.05);
+      _sv.setScalar(visible ? 1 : 0.001);
+      groupRef.current.scale.lerp(_sv, 0.05);
     }
   });
 
   return (
     <group ref={groupRef} scale={0.001}>
-      <Instances limit={particles.length} range={particles.length}>
-        <icosahedronGeometry args={[0.06, 1]} />
-        <meshBasicMaterial toneMapped={false} />
-        {particles.map((data, i) => (
-          <Instance key={i} position={data.position} color={data.color} scale={data.scale} />
-        ))}
-      </Instances>
+      <points material={mat}>
+        <bufferGeometry>
+          <bufferAttribute attach="attributes-position" args={[posArray, 3]} />
+          {/* vertexColors path — built-in Three.js, no extension needed */}
+          <bufferAttribute attach="attributes-color"    args={[colArray, 3]} />
+        </bufferGeometry>
+      </points>
     </group>
   );
 }
@@ -210,13 +262,13 @@ function DNAStrand({ visible, dnaRadius, dnaHeight, dnaLoops, particleCount, sca
 // ---------------------------------------------------------
 // Physically Attached DNA Glass Cards
 // ---------------------------------------------------------
-function OrbitingCards({ visible, dnaHeight, dnaRadius, dnaLoops, cardYSpacing, scrollProgress, setActiveProject, activeProject, angleOffsetDeg, glassTransmission, glassRoughness }: any) {
+function OrbitingCards({ visible, dnaHeight, dnaRadius, dnaLoops, cardYSpacing, scrollProgress, setActiveProject, activeProject, transitionType, angleOffsetDeg, glassTransmission, glassRoughness }: any) {
   const groupRef = useRef<THREE.Group>(null);
 
   useFrame(() => {
     if (groupRef.current) {
-      const targetScale = visible ? 1 : 0.001;
-      groupRef.current.scale.lerp(new THREE.Vector3(targetScale, targetScale, targetScale), 0.05);
+      _sv.setScalar(visible ? 1 : 0.001);
+      groupRef.current.scale.lerp(_sv, 0.05);
     }
   });
 
@@ -233,6 +285,7 @@ function OrbitingCards({ visible, dnaHeight, dnaRadius, dnaLoops, cardYSpacing, 
           cardYSpacing={cardYSpacing}
           setActiveProject={setActiveProject}
           activeProject={activeProject}
+          transitionType={transitionType}
           angleOffsetDeg={angleOffsetDeg}
           glassTransmission={glassTransmission}
           glassRoughness={glassRoughness}
@@ -242,7 +295,7 @@ function OrbitingCards({ visible, dnaHeight, dnaRadius, dnaLoops, cardYSpacing, 
   );
 }
 
-function OrbitingCardItem({ proj, i, dnaHeight, dnaRadius, dnaLoops, cardYSpacing, setActiveProject, activeProject, angleOffsetDeg, glassTransmission, glassRoughness }: any) {
+function OrbitingCardItem({ proj, i, dnaHeight, dnaRadius, dnaLoops, cardYSpacing, setActiveProject, activeProject, transitionType, angleOffsetDeg, glassTransmission, glassRoughness }: any) {
   const cardRef = useRef<THREE.Group>(null);
   const glassMaterialRef = useRef<any>(null);
   const accentRef = useRef<any>(null);
@@ -270,7 +323,8 @@ function OrbitingCardItem({ proj, i, dnaHeight, dnaRadius, dnaLoops, cardYSpacin
     
     if (isActive) {
       // Scale up massively to swallow the screen
-      cardRef.current.scale.lerp(new THREE.Vector3(12, 12, 12), 0.03);
+      _sv.set(12, 12, 12);
+      cardRef.current.scale.lerp(_sv, 0.03);
       // Slowly fade out the glass backing to reveal the cinematic UI underneath
       if (glassMaterialRef.current) {
          glassMaterialRef.current.opacity = THREE.MathUtils.lerp(glassMaterialRef.current.opacity, 0, 0.04);
@@ -281,10 +335,12 @@ function OrbitingCardItem({ proj, i, dnaHeight, dnaRadius, dnaLoops, cardYSpacin
       }
     } else if (isAnyActive) {
       // Shrink other cards out of view
-      cardRef.current.scale.lerp(new THREE.Vector3(0.001, 0.001, 0.001), 0.08);
+      _sv.set(0.001, 0.001, 0.001);
+      cardRef.current.scale.lerp(_sv, 0.08);
     } else {
       // Normal rest state
-      cardRef.current.scale.lerp(new THREE.Vector3(1, 1, 1), 0.08);
+      _sv.set(1, 1, 1);
+      cardRef.current.scale.lerp(_sv, 0.08);
       if (glassMaterialRef.current) {
          glassMaterialRef.current.opacity = THREE.MathUtils.lerp(glassMaterialRef.current.opacity, 1, 0.05);
          if (glassMaterialRef.current.opacity > 0.95) glassMaterialRef.current.transparent = false;
@@ -321,21 +377,33 @@ function OrbitingCardItem({ proj, i, dnaHeight, dnaRadius, dnaLoops, cardYSpacin
           document.body.style.cursor = 'auto';
         }}
       >
-        {/* Soft fading particles emitted when card expands */}
-        {isActive && <CardParticles color={themeColor} />}
+        {/* Cinematic Transition Engine Swap */}
+        {isActive && (
+          <group>
+            {transitionType === 'smoke-blast' && <SmokeBlast color={themeColor} />}
+            {transitionType === 'neon-dust' && <NeonDust color={themeColor} />}
+            {transitionType === 'blackhole-bomb' && <BlackholeBomb color={themeColor} />}
+            {transitionType === 'glitch-blocks' && <GlitchBlocks color={themeColor} />}
+            {transitionType === 'hyper-warp' && <HyperWarp color={themeColor} />}
+            {transitionType === 'grid-snap' && <GridSnap color={themeColor} />}
+            {transitionType === 'implosion-ring' && <ImplosionRing color={themeColor} />}
+            {transitionType === 'matrix-rain' && <MatrixRain color={themeColor} />}
+            {transitionType === 'cosmic-vortex' && <CosmicVortex color={themeColor} />}
+            {transitionType === 'shattered-glass' && <ShatteredGlass />}
+          </group>
+        )}
 
-        {/* Dark Cybernetic UI Glass Backing */}
+        {/* Glass Backing — transmission makes the dark card visible as actual glass against the scene */}
         <RoundedBox args={[3.8, 2.8, 0.05]} radius={0.15} smoothness={4}>
-          <meshPhysicalMaterial 
+          <meshPhysicalMaterial
             ref={glassMaterialRef}
             color="#030305"
             transmission={glassTransmission}
             opacity={1}
-            metalness={0.5}
+            metalness={0.3}
             roughness={glassRoughness}
             ior={1.5}
-            thickness={1.0}
-            clearcoat={1}
+            thickness={0.5}
           />
         </RoundedBox>
 
@@ -346,23 +414,42 @@ function OrbitingCardItem({ proj, i, dnaHeight, dnaRadius, dnaLoops, cardYSpacin
         </mesh>
 
         {/* 3D Projected HTML Overlay */}
-        <Html transform position={[0, 0, 0.1]} distanceFactor={2} center className={isActive ? 'opacity-0 transition-opacity duration-700 pointer-events-none' : 'opacity-100 transition-opacity duration-300'}>
+        <Html transform position={[0, 0, 0.1]} distanceFactor={2.5} center className={isActive ? 'opacity-0 transition-opacity duration-700 pointer-events-none' : 'opacity-100 transition-opacity duration-300'}>
           <div 
             onClick={(e) => {
                e.stopPropagation();
                setActiveProject(proj.id);
             }}
-            className={`w-[280px] text-left pointer-events-auto cursor-pointer select-none transition-all duration-500 hover:scale-[1.03] group ${isLeft ? 'pr-4' : 'pl-4'}`}
+            className={`w-[400px] text-left pointer-events-auto cursor-pointer select-none transition-all duration-700 hover:scale-[1.02] group ${isLeft ? 'pr-2' : 'pl-2'}`}
           >
-            <p className="text-[10px] text-[#00e5ff] mb-2 uppercase tracking-[0.2em] font-medium drop-shadow-[0_0_8px_rgba(0,229,255,0.8)]">
-              {proj.tech}
-            </p>
-            <h3 className="text-3xl font-light text-white mb-3 tracking-wide drop-shadow-md group-hover:text-[#00e5ff] transition-colors duration-300">
+            {/* Tech tag with neon glow and technical UI markers */}
+            <div className="flex items-center gap-3 mb-4 opacity-80 group-hover:opacity-100 transition-opacity duration-300">
+              <div className={`w-1.5 h-1.5 rounded-full ${isLeft ? 'bg-[#00e5ff] shadow-[0_0_12px_#00e5ff]' : 'bg-[#ff2a00] shadow-[0_0_12px_#ff2a00]'}`} />
+              <div className="flex flex-col">
+                <p className={`text-[10px] font-mono uppercase tracking-[0.3em] font-bold ${isLeft ? 'text-[#00e5ff]' : 'text-[#ff2a00]'}`}>
+                  {proj.tech.split(' / ')[0]} 
+                </p>
+                <p className="text-[8px] font-mono text-white/30 tracking-widest mt-0.5">SYS_ID: [{proj.id.toUpperCase()}]</p>
+              </div>
+            </div>
+            
+            {/* Title with metallic gradient and sharp font */}
+            <h3 className="text-4xl font-light text-transparent bg-clip-text bg-gradient-to-br from-white via-white to-white/40 mb-4 tracking-wider group-hover:drop-shadow-[0_0_15px_rgba(255,255,255,0.3)] transition-all duration-500">
               {proj.title}
             </h3>
-            <p className="text-xs font-light text-white/70 leading-relaxed max-w-[250px] group-hover:text-white transition-colors duration-300">
-              {proj.desc}
-            </p>
+            
+            {/* Description with glassmorphism pane feel */}
+            <div className="relative pl-4 border-l-2 border-white/10 group-hover:border-white/30 transition-colors duration-300">
+              <p className="text-[12px] font-light text-white/60 leading-relaxed max-w-[360px] group-hover:text-white/90 transition-colors duration-300">
+                {proj.desc}
+              </p>
+            </div>
+
+            {/* Decorative bottom element */}
+            <div className="mt-8 flex items-center gap-4 opacity-30 group-hover:opacity-100 transition-opacity duration-500">
+              <div className={`h-[1px] flex-1 ${isLeft ? 'bg-gradient-to-r from-[#00e5ff] to-transparent' : 'bg-gradient-to-r from-[#ff2a00] to-transparent'}`} />
+              <div className="text-[9px] font-mono tracking-[0.4em] text-white/70 bg-white/5 px-2 py-1 rounded border border-white/10 group-hover:border-white/30">ACCESS_NODE</div>
+            </div>
           </div>
         </Html>
       </group>
@@ -370,43 +457,7 @@ function OrbitingCardItem({ proj, i, dnaHeight, dnaRadius, dnaLoops, cardYSpacin
   );
 }
 
-// Gentle drifting particles inside the expanding card portal
-function CardParticles({ color }: { color: string }) {
-  const pointsRef = useRef<THREE.Points>(null);
-  const particleCount = 200;
-  
-  const { positions, sizes } = useMemo(() => {
-    const pos = new Float32Array(particleCount * 3);
-    const siz = new Float32Array(particleCount);
-    for(let i=0; i<particleCount; i++) {
-      pos[i*3] = (Math.random() - 0.5) * 4;
-      pos[i*3+1] = (Math.random() - 0.5) * 3;
-      pos[i*3+2] = (Math.random() - 0.5) * 2;
-      siz[i] = Math.random() * 0.04;
-    }
-    return { positions: pos, sizes: siz };
-  }, []);
 
-  useFrame((state, delta) => {
-    if (!pointsRef.current) return;
-    const pos = pointsRef.current.geometry.attributes.position.array as Float32Array;
-    for(let i=0; i<particleCount; i++) {
-      pos[i*3+2] += delta * 0.8; // Drift towards camera
-      if (pos[i*3+2] > 2) pos[i*3+2] = -2; // Loop back
-    }
-    pointsRef.current.geometry.attributes.position.needsUpdate = true;
-  });
-
-  return (
-    <points ref={pointsRef}>
-      <bufferGeometry>
-        <bufferAttribute attach="attributes-position" count={particleCount} array={positions} itemSize={3} />
-        <bufferAttribute attach="attributes-size" count={particleCount} array={sizes} itemSize={1} />
-      </bufferGeometry>
-      <pointsMaterial color={color} transparent opacity={0.6} sizeAttenuation blending={THREE.AdditiveBlending} depthWrite={false} />
-    </points>
-  );
-}
 
 
 
@@ -426,43 +477,55 @@ const TECH_STACK = [
   { name: "React", icon: Box }
 ];
 
+// CanvasLabel — canvas texture sprite, works on ALL hardware (no ANGLE_instanced_arrays needed)
+function CanvasLabel({ text }: { text: string }) {
+  const texture = useMemo(() => {
+    const W = 320, H = 72;
+    const canvas = document.createElement('canvas');
+    canvas.width = W; canvas.height = H;
+    const ctx = canvas.getContext('2d')!;
+    ctx.fillStyle = 'rgba(3,3,5,0.95)';
+    ctx.beginPath(); ctx.roundRect(2, 2, W-4, H-4, 14); ctx.fill();
+    ctx.strokeStyle = 'rgba(0,229,255,0.5)';
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.roundRect(2, 2, W-4, H-4, 14); ctx.stroke();
+    ctx.fillStyle = '#00e5ff';
+    ctx.font = 'bold 22px monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text.toUpperCase(), W/2, H/2);
+    return new THREE.CanvasTexture(canvas);
+  }, [text]);
+  return (
+    <mesh>
+      <planeGeometry args={[2.2, 0.5]} />
+      <meshBasicMaterial map={texture} transparent depthWrite={false} />
+    </mesh>
+  );
+}
+
 function OrbitingTechStack({ visible, positionY }: { visible: boolean; positionY: number }) {
   const groupRef = useRef<THREE.Group>(null);
-  
-  useFrame((state) => {
-    if (groupRef.current) {
-      const targetScale = visible ? 1 : 0.001;
-      groupRef.current.scale.lerp(new THREE.Vector3(targetScale, targetScale, targetScale), 0.05);
-      
-      // Orbit logic: slightly slower rotation for readability
-      groupRef.current.rotation.y -= 0.0025;
 
-      // Increased forward tilt to spread out cards at the left/right horizons
-      groupRef.current.rotation.x = 0.25;
-      groupRef.current.rotation.z = -0.05;
+  useFrame(() => {
+    if (groupRef.current) {
+      _sv.setScalar(visible ? 1 : 0.001);
+      groupRef.current.scale.lerp(_sv, 0.05);
+      groupRef.current.rotation.y -= 0.0025;
     }
   });
 
   return (
-    <group ref={groupRef} position={[0, positionY, 0]} scale={0.001}>
+    <group ref={groupRef} position={[0, positionY, 0]} scale={0.001} rotation={[0.25, 0, -0.05]}>
       {TECH_STACK.map((tech, i) => {
-        // Single row circular distribution
         const angle = (i / TECH_STACK.length) * Math.PI * 2;
-        const radius = 5.2; // Tighter ring
-        
+        const radius = 5.2;
         const x = Math.cos(angle) * radius;
-        const y = 0; // Perfectly flat Saturn ring (no wave)
         const z = Math.sin(angle) * radius;
-
-        const Icon = tech.icon;
-
         return (
-          <Html key={tech.name} transform sprite occlude center position={[x, y, z]} distanceFactor={3.5}>
-            <div className="flex items-center gap-2.5 px-4 py-2 border border-[#00e5ff]/40 bg-[#030305]/95 backdrop-blur-md rounded-lg text-[#00e5ff] text-[10px] uppercase tracking-[0.1em] font-semibold shadow-[0_0_15px_rgba(0,229,255,0.2)] whitespace-nowrap select-none group hover:scale-110 hover:border-[#00e5ff] hover:shadow-[0_0_25px_rgba(0,229,255,0.4)] transition-all cursor-default">
-              <Icon size={14} className="text-[#ff2a00] group-hover:text-[#00e5ff] transition-colors duration-300" />
-              <span className="drop-shadow-[0_0_8px_rgba(0,229,255,0.5)]">{tech.name}</span>
-            </div>
-          </Html>
+          <Billboard key={tech.name} position={[x, 0, z]}>
+            <CanvasLabel text={tech.name} />
+          </Billboard>
         );
       })}
     </group>
@@ -477,6 +540,10 @@ function ActiveTheoryCore({ visible, positionY = 15.0, shrinkToDot = false }: { 
   const wireframeRef = useRef<THREE.Mesh>(null);
   const groupRef = useRef<THREE.Group>(null);
 
+  // Spring instances — pre-allocated, zero GC
+  const springX = useMemo(() => new Spring(0.08, 0.82), []);
+  const springY = useMemo(() => new Spring(0.08, 0.82), []);
+
   useFrame((state) => {
     const time = state.clock.getElapsedTime();
     if (materialRef.current) materialRef.current.uTime = time;
@@ -487,13 +554,15 @@ function ActiveTheoryCore({ visible, positionY = 15.0, shrinkToDot = false }: { 
     }
 
     if (groupRef.current) {
-      const targetX = (state.pointer.x * Math.PI) / 8;
-      const targetY = (state.pointer.y * Math.PI) / 8;
-      groupRef.current.rotation.y = THREE.MathUtils.lerp(groupRef.current.rotation.y, targetX, 0.05);
-      groupRef.current.rotation.x = THREE.MathUtils.lerp(groupRef.current.rotation.x, -targetY, 0.05);
+      // Spring physics — elastic overshoot makes sphere feel alive
+      springX.target =  (state.pointer.x * Math.PI) / 8;
+      springY.target = -(state.pointer.y * Math.PI) / 8;
+      groupRef.current.rotation.y = springX.update();
+      groupRef.current.rotation.x = springY.update();
 
       const targetScale = !visible ? 0.001 : (shrinkToDot ? 0.08 : 1);
-      groupRef.current.scale.lerp(new THREE.Vector3(targetScale, targetScale, targetScale), 0.05);
+      _sv.setScalar(targetScale);
+      groupRef.current.scale.lerp(_sv, 0.05);
     }
   });
 
@@ -516,7 +585,7 @@ function ActiveTheoryCore({ visible, positionY = 15.0, shrinkToDot = false }: { 
 // ---------------------------------------------------------
 // Main Orchestration Stage
 // ---------------------------------------------------------
-function MainStage({ scrollProgress, setActiveProject, activeProject }: { scrollProgress: number, setActiveProject: (id: string) => void, activeProject: string | null }) {
+function MainStage({ scrollProgress, scrollRef, setActiveProject, activeProject, transitionType }: { scrollProgress: number, scrollRef: React.RefObject<number>, setActiveProject: (id: string) => void, activeProject: string | null, transitionType: string }) {
   const stageRef = useRef<THREE.Group>(null);
   const isHero = scrollProgress < 0.1;
 
@@ -535,29 +604,28 @@ function MainStage({ scrollProgress, setActiveProject, activeProject }: { scroll
   
   const finaleEffect = 'Core Re-Assembly';
 
-  // State derived from scrollProgress
+  // State derived from scrollProgress (throttled — updates at phase boundaries)
   const isAboutActive = scrollProgress > 0.1 && scrollProgress <= 0.2;
   const isTechStackActive = finaleEffect === 'Core Re-Assembly' && scrollProgress > 0.8 && scrollProgress < 0.95;
   const isContactActive = scrollProgress >= 0.95;
 
   useFrame((state) => {
     if (stageRef.current) {
-      // Scroll Phases:
-      // Hero: 0.0 -> 0.1
-      // About: 0.1 -> 0.2
-      // DNA: 0.2 -> 0.8
-      // Tech Stack: 0.8 -> 0.95
-      // Contact: 0.95 -> 1.0
+      // Read from ref every frame — always current, no React re-render needed
+      const sp = scrollRef.current;
+      const scrollTraverse = Math.min(1, Math.max(0, (sp - 0.2) / 0.6));
+      const finaleT = Math.max(0, (sp - 0.8) / 0.15); // 0 to 1 at the very bottom
       
-      const scrollTraverse = Math.min(1, Math.max(0, (scrollProgress - 0.2) / 0.6));
-      const finaleT = Math.max(0, (scrollProgress - 0.8) / 0.15); // 0 to 1 at the very bottom
-      
-      // X shift for layout balancing
+      // X shift for layout balancing (derive phase from live ref value)
+      const _isHero = sp < 0.1;
+      const _isAbout = sp > 0.1 && sp <= 0.2;
+      const _isTech = sp > 0.8 && sp < 0.95;
+      const _isContact = sp >= 0.95;
       let targetX = 0;
-      if (isHero) targetX = 2.5;
-      else if (isAboutActive) targetX = 2.5;
-      else if (isTechStackActive) targetX = 2.5;
-      else if (isContactActive) targetX = 0; // Center the core for the contact section
+      if (_isHero) targetX = 2.5;
+      else if (_isAbout) targetX = 2.5;
+      else if (_isTech) targetX = 2.5;
+      else if (_isContact) targetX = 0;
 
       stageRef.current.position.x = THREE.MathUtils.lerp(stageRef.current.position.x, targetX, 0.05);
 
@@ -661,6 +729,7 @@ function MainStage({ scrollProgress, setActiveProject, activeProject }: { scroll
         cardYSpacing={cardYSpacing}
         setActiveProject={setActiveProject}
         activeProject={activeProject}
+        transitionType={transitionType}
         angleOffsetDeg={angleOffsetDeg}
         glassTransmission={glassTransmission}
         glassRoughness={glassRoughness}
@@ -675,35 +744,46 @@ const PROJECTS = [
     title: "Sentinel Flow",
     tech: "TYPESCRIPT / SQLITE / AI",
     desc: "AI Code Intelligence System mapping codebases into interactive knowledge graphs with dual-path AI routing.",
-    link: "https://marketplace.visualstudio.com/items?itemName=UnshakenSoul.sentinel-flow-extension"
+    link: "https://marketplace.visualstudio.com/items?itemName=UnshakenSoul.sentinel-flow-extension",
+    image: "/assets/sentinel_flow_ui.png"
   },
   {
     id: "proj-2",
     title: "PhantmOS v3.0",
     tech: "PYTHON / FASTAPI / DOCKER",
     desc: "Autonomous Multi-Agent Job Engine. Discovers remote jobs, scores relevance, and tailors applications using LLMs.",
-    link: "https://unshakensou17-phantmos.hf.space"
+    link: "https://unshakensou17-phantmos.hf.space",
+    image: "/assets/phantmos_ui.png"
   },
   {
     id: "proj-3",
     title: "Reasoning Bottlenecks",
     tech: "PYTORCH / TRANSFORMERS",
     desc: "Implemented slot-based reasoning bottlenecks in small Transformers, improving mean accuracy on the SCAN benchmark from 0.55 to 0.71.",
-    link: "https://github.com/unshakensoul17/reasoning-bottlenecks-scan"
+    link: "https://github.com/unshakensoul17/reasoning-bottlenecks-scan",
+    image: "/assets/deep_scan_ui.png"
   },
   {
     id: "proj-4",
     title: "SmartCart Clustering",
     tech: "PYTHON / SCIKIT-LEARN",
     desc: "Unsupervised learning pipeline identifying actionable customer segments using PCA dimensionality reduction and K-Means.",
-    link: "https://github.com/unshakensoul17/SmartCart-Customer-Segmentation"
+    link: "https://github.com/unshakensoul17/SmartCart-Customer-Segmentation",
+    image: "/assets/smartcart_clustering_ui.png"
   }
 ];
+
 
 export default function Experience() {
   const [scrollProgress, setScrollProgress] = useState(0);
   const [activeProject, setActiveProject] = useState<string | null>(null);
+  const [transitionType, setTransitionType] = useState('implosion-ring');
   const [selectedProjData, setSelectedProjData] = useState<any>(null);
+
+  // scrollRef is always current — read by useFrame every frame (no React re-render needed)
+  const scrollRef = useRef(0);
+  // lastPhaseRef prevents unnecessary React re-renders between phase boundaries
+  const lastPhaseRef = useRef(-1);
 
   useEffect(() => {
     if (activeProject) {
@@ -718,16 +798,37 @@ export default function Experience() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, [activeProject]);
 
+  // GSAP ScrollTrigger scrub — flywheel feel with 1.2s lag
   useEffect(() => {
-    const handleScroll = () => {
-      const h = document.documentElement.scrollHeight - window.innerHeight;
-      const progress = h > 0 ? window.scrollY / h : 0;
-      setScrollProgress(progress);
-    };
+    // Seed ref immediately so first frame is correct
+    const h = document.documentElement.scrollHeight - window.innerHeight;
+    scrollRef.current = h > 0 ? window.scrollY / h : 0;
 
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    handleScroll();
-    return () => window.removeEventListener("scroll", handleScroll);
+    const st = ScrollTrigger.create({
+      trigger: document.body,
+      start: 'top top',
+      end: 'bottom bottom',
+      scrub: 1.2,            // seconds of lag → flywheel feel
+      onUpdate: (self) => {
+        scrollRef.current = self.progress;
+        // throttle React state to phase boundaries only
+        const phase = Math.floor(self.progress * 20);
+        if (phase !== lastPhaseRef.current) {
+          lastPhaseRef.current = phase;
+          setScrollProgress(self.progress);
+        }
+      },
+    });
+
+    // close active project on scroll
+    const onScroll = () => { if (activeProject) setActiveProject(null); };
+    window.addEventListener('scroll', onScroll, { passive: true });
+
+    return () => {
+      st.kill();
+      window.removeEventListener('scroll', onScroll);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
@@ -750,14 +851,23 @@ export default function Experience() {
           <pointLight position={[-10, -10, -5]} intensity={1.5} color="#00e5ff" />
 
           {/* Main Orchestrator for Globe/DNA Morphing and Positioning */}
-          <MainStage scrollProgress={scrollProgress} setActiveProject={setActiveProject} activeProject={activeProject} />
+          <MainStage scrollProgress={scrollProgress} scrollRef={scrollRef} setActiveProject={setActiveProject} activeProject={activeProject} transitionType={transitionType} />
 
           <EffectComposer>
-            <Bloom intensity={1.5} luminanceThreshold={0.2} luminanceSmoothing={0.9} mipmapBlur={true} />
-            <Noise opacity={0.04} />
+            {/* height cap limits Bloom's internal render resolution — big perf win at 1440p+ */}
+            <Bloom intensity={1.4} luminanceThreshold={0.2} luminanceSmoothing={0.5} mipmapBlur={true} height={350} />
           </EffectComposer>
         </Canvas>
       </div>
+
+      {/* Static CSS Grain Overlay — zero GPU cost per frame vs Noise post-process pass */}
+      <div
+        className="fixed inset-0 pointer-events-none z-[4]"
+        style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`,
+          opacity: 0.035,
+        }}
+      />
 
       {/* Cinematic Vignette Overlay */}
       <div className="fixed inset-0 pointer-events-none z-[5]" style={{ background: 'radial-gradient(circle at center, transparent 0%, rgba(3,3,5,0.8) 100%)' }}></div>
@@ -925,6 +1035,8 @@ export default function Experience() {
       </div>
 
       {/* Cinematic Active Project Overlay */}
+
+
       <div 
         className={`fixed inset-0 z-[100] pointer-events-none flex items-center justify-center transition-all ease-in-out ${activeProject ? 'duration-[2000ms] opacity-100' : 'duration-700 opacity-0'}`}
       >
@@ -978,18 +1090,33 @@ export default function Experience() {
              <div className="absolute top-0 left-0 w-full h-full border border-white/[0.02] rounded-[2rem] pointer-events-none" />
              
              {/* Placeholder for project visual - The actual image */}
-             <div className="relative w-full h-full flex items-center justify-center">
-               <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noiseFilter%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.85%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noiseFilter)%22/%3E%3C/svg%3E")' }} />
+             <div className="relative w-full h-full flex items-center justify-center p-4">
+               {/* Noise effect */}
+               <div className="absolute inset-0 opacity-10 pointer-events-none" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noiseFilter%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.85%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noiseFilter)%22/%3E%3C/svg%3E")' }} />
                
-               {/* Center Logo/Visual Placeholder */}
-               <div className="flex flex-col items-center gap-6 opacity-30 group-hover:opacity-60 transition-opacity duration-700">
-                  <div className="w-16 h-16 border border-[#00e5ff]/50 rounded-xl flex items-center justify-center rotate-45 group-hover:rotate-90 transition-all duration-1000">
-                    <div className="w-8 h-8 border border-white/50 rounded-sm -rotate-45 group-hover:-rotate-90 transition-all duration-1000" />
-                  </div>
-                  <div className="text-[#00e5ff] font-mono text-[10px] tracking-[0.4em] uppercase">
-                    Neural Link Active
-                  </div>
-               </div>
+               {/* Project Image */}
+               {selectedProjData?.image && (
+                 <img 
+                   src={selectedProjData.image} 
+                   alt={selectedProjData.title}
+                   className="w-full h-full object-cover rounded-xl border border-white/10 opacity-90 transition-all duration-1000"
+                   style={{
+                     filter: 'contrast(1.1) brightness(0.9) drop-shadow(0 0 40px rgba(0, 229, 255, 0.15))',
+                   }}
+                 />
+               )}
+               
+               {/* Center Logo/Visual Overlay */}
+               {!selectedProjData?.image && (
+                 <div className="flex flex-col items-center gap-6 opacity-30 group-hover:opacity-60 transition-opacity duration-700">
+                    <div className="w-16 h-16 border border-[#00e5ff]/50 rounded-xl flex items-center justify-center rotate-45 group-hover:rotate-90 transition-all duration-1000">
+                      <div className="w-8 h-8 border border-white/50 rounded-sm -rotate-45 group-hover:-rotate-90 transition-all duration-1000" />
+                    </div>
+                    <div className="text-[#00e5ff] font-mono text-[10px] tracking-[0.4em] uppercase">
+                      Neural Link Active
+                    </div>
+                 </div>
+               )}
              </div>
           </div>
 
