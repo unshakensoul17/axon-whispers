@@ -714,9 +714,10 @@ function MainStage({ scrollProgress, scrollRef, setActiveProject, activeProject,
       const _isAbout = sp > 0.1 && sp <= 0.2;
       const _isTech = sp > 0.8 && sp < 0.95;
       const _isContact = sp >= 0.95;
+      const isMobile = window.innerWidth < 768;
       let targetX = 0;
-      if (_isHero) targetX = 2.5;
-      else if (_isAbout) targetX = 2.5;
+      if (_isHero) targetX = isMobile ? 0 : 2.5;
+      else if (_isAbout) targetX = isMobile ? 0 : 2.5;
       else if (_isTech) targetX = 0;
       else if (_isContact) targetX = 0;
 
@@ -730,7 +731,8 @@ function MainStage({ scrollProgress, scrollRef, setActiveProject, activeProject,
 
       let targetRotationY = -currentAngle + (Math.PI / 2);
       let targetZ = 0;
-      let targetYOffset = 0;
+      let targetYOffset = isMobile && (_isHero || _isAbout) ? 2.0 : 0; // Push globe down on mobile so text sits above it (since position.y is inverted later maybe? wait, +Y is up in threejs. To push it down visually, targetYOffset should be negative? Let's use 0 for now and just rely on scale if needed, actually let's use -2.0)
+      targetYOffset = isMobile && (_isHero || _isAbout) ? -2.5 : 0;
       let targetScaleX = 1;
       let targetScaleY = 1;
       let targetScaleZ = 1;
@@ -963,13 +965,13 @@ export default function Experience() {
       <div className="fixed inset-0 pointer-events-none z-[5]" style={{ background: 'radial-gradient(circle at center, transparent 0%, rgba(0,0,0,0.8) 100%)' }}></div>
 
       {/* Fixed Navbar */}
-      <nav className="fixed left-0 right-0 top-0 z-50 flex items-center justify-between px-6 py-6 md:px-12 bg-gradient-to-b from-black/90 to-transparent backdrop-blur-sm pointer-events-auto">
-        <div className="flex items-center gap-2">
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <nav className="fixed left-0 right-0 top-0 z-50 flex items-center justify-between px-4 sm:px-6 py-4 sm:py-6 md:px-12 bg-gradient-to-b from-black/90 to-transparent backdrop-blur-sm pointer-events-auto">
+        <div className="flex items-center gap-1 sm:gap-2">
+          <svg className="w-5 h-5 sm:w-7 sm:h-7" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M4 12L10 6V18L16 12" stroke="#9B5DE5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
-          <span className="text-2xl md:text-3xl tracking-wider text-white font-display">
-            <span className="font-bold">{contentData.hero.name.split(' ')[0].toUpperCase()}</span> <span className="font-light">{contentData.hero.name.split(' ').slice(1).join(' ').toUpperCase()}</span>
+          <span className="text-lg sm:text-2xl md:text-3xl tracking-wider text-white font-display">
+            <span className="font-bold">{contentData.hero.name.split(' ')[0].toUpperCase()}</span> <span className="font-light hidden sm:inline-block ml-1">{contentData.hero.name.split(' ').slice(1).join(' ').toUpperCase()}</span>
           </span>
         </div>
 
@@ -982,7 +984,7 @@ export default function Experience() {
 
         <button
           onClick={() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' })}
-          className="rounded-full bg-[#9B5DE5]/10 border border-[#9B5DE5]/30 px-8 py-3 text-[13px] tracking-[0.2em] uppercase font-mono text-[#9B5DE5] transition-all hover:bg-[#9B5DE5] hover:text-black shadow-[0_0_15px_rgba(0,229,255,0.15)] font-bold"
+          className="rounded-full bg-[#9B5DE5]/10 border border-[#9B5DE5]/30 px-4 py-2 sm:px-8 sm:py-3 text-[10px] sm:text-[13px] tracking-[0.2em] uppercase font-mono text-[#9B5DE5] transition-all hover:bg-[#9B5DE5] hover:text-black shadow-[0_0_15px_rgba(0,229,255,0.15)] font-bold"
         >
           Initiate
         </button>
@@ -1028,16 +1030,16 @@ export default function Experience() {
         <div className="h-[1000vh]"></div>
 
         {/* Fixed Hero Overlay */}
-        <div className="fixed inset-0 flex flex-col justify-center px-16 md:px-32 max-w-4xl pt-20 pointer-events-none">
+        <div className="fixed inset-0 flex flex-col justify-center px-6 sm:px-12 md:px-32 max-w-4xl pt-10 md:pt-20 pointer-events-none">
           <div className={scrollProgress <= 0.1 ? "pointer-events-auto" : "pointer-events-none"} style={{ opacity: Math.max(0, 1 - (scrollProgress / 0.1)), transition: 'opacity 0.1s' }}>
-            <span className="text-[#9B5DE5] font-mono text-xs md:text-sm tracking-[0.3em] uppercase mb-6 block font-bold">
+            <span className="text-[#9B5DE5] font-mono text-xs md:text-sm tracking-[0.3em] uppercase mb-4 md:mb-6 block font-bold">
               {contentData.hero.name} • {contentData.hero.role}
             </span>
-            <h1 className="text-5xl md:text-7xl font-display font-bold tracking-tight text-white mb-6 leading-none">
+            <h1 className="text-4xl sm:text-5xl md:text-7xl font-display font-bold tracking-tight text-white mb-4 md:mb-6 leading-tight md:leading-none">
               {contentData.hero.headlineL1} <br />
               {contentData.hero.headlineL2}
             </h1>
-            <p className="text-xl md:text-2xl font-light text-white/50 leading-relaxed mb-12 max-w-2xl">
+            <p className="text-lg md:text-2xl font-light text-white/50 leading-relaxed mb-12 max-w-2xl">
               Scroll to explore
             </p>
           </div>
@@ -1045,7 +1047,7 @@ export default function Experience() {
 
         {/* Fixed About Overlay */}
         <div
-          className="fixed inset-0 flex flex-col justify-center px-16 md:px-32 max-w-2xl pointer-events-none"
+          className="fixed inset-0 flex flex-col justify-center px-6 sm:px-12 md:px-32 max-w-2xl pointer-events-none"
           style={{
             opacity: (scrollProgress > 0.05 && scrollProgress <= 0.25) ? 1 : 0,
             transform: `translateY(${(scrollProgress > 0.05 && scrollProgress <= 0.25) ? '0px' : '20px'})`,
@@ -1053,12 +1055,12 @@ export default function Experience() {
           }}
         >
           <div className={(scrollProgress > 0.05 && scrollProgress <= 0.25) ? "pointer-events-auto" : "pointer-events-none"}>
-            <span className="text-[10px] md:text-[11px] font-mono text-[#9B5DE5] mb-3 block uppercase tracking-[0.3em]">Career Objective</span>
-            <h2 className="text-4xl md:text-5xl font-display font-bold tracking-tight text-white mb-6">
+            <span className="text-[10px] md:text-[11px] font-mono text-[#9B5DE5] mb-2 md:mb-3 block uppercase tracking-[0.3em]">Career Objective</span>
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-display font-bold tracking-tight text-white mb-4 md:mb-6">
               Engineering Mindset
             </h2>
             {contentData.aboutMe.paragraphs.map((p, i) => (
-              <p key={i} className={`text-lg font-light text-white/60 leading-relaxed ${i === 0 ? 'mb-6' : ''}`}>
+              <p key={i} className={`text-base sm:text-lg font-light text-white/60 leading-relaxed ${i === 0 ? 'mb-4 md:mb-6' : ''}`}>
                 {p}
               </p>
             ))}
@@ -1067,15 +1069,15 @@ export default function Experience() {
 
         {/* Fixed Projects Section Title Overlay */}
         <div
-          className="fixed top-32 px-16 md:px-32 max-w-2xl pointer-events-none"
+          className="fixed top-24 md:top-32 px-6 sm:px-12 md:px-32 max-w-2xl pointer-events-none"
           style={{
             opacity: (scrollProgress > 0.25 && scrollProgress <= 0.75 && !activeProject) ? 1 : 0,
             transform: `translateY(${(scrollProgress > 0.25 && scrollProgress <= 0.75 && !activeProject) ? '0px' : '-20px'})`,
             transition: 'all 0.5s ease-out'
           }}
         >
-          <span className="text-xs md:text-sm font-mono text-[#9B5DE5] mb-2 block uppercase tracking-[0.3em] font-bold">Selected Works</span>
-          <h2 className="text-3xl md:text-4xl font-display font-bold tracking-tight text-white/90 drop-shadow-[0_0_10px_rgba(255,255,255,0.1)]">
+          <span className="text-[10px] md:text-sm font-mono text-[#9B5DE5] mb-2 block uppercase tracking-[0.3em] font-bold">Selected Works</span>
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-display font-bold tracking-tight text-white/90 drop-shadow-[0_0_10px_rgba(255,255,255,0.1)]">
             Orbital Archives
           </h2>
         </div>
@@ -1127,45 +1129,45 @@ export default function Experience() {
           }}
         >
           <div className={scrollProgress >= 0.95 ? "pointer-events-auto" : "pointer-events-none"}>
-            <h2 className="text-6xl md:text-8xl font-display font-bold text-white tracking-tighter mb-4 drop-shadow-[0_0_20px_rgba(0,229,255,0.3)] leading-none">
+            <h2 className="text-4xl sm:text-5xl md:text-7xl lg:text-8xl font-display font-bold text-white tracking-tighter mb-2 md:mb-4 drop-shadow-[0_0_20px_rgba(0,229,255,0.3)] leading-none">
               ESTABLISH
             </h2>
-            <h2 className="text-6xl md:text-8xl font-display font-bold text-[#9B5DE5] tracking-tighter mb-16 drop-shadow-[0_0_30px_rgba(0,229,255,0.5)] leading-none">
+            <h2 className="text-4xl sm:text-5xl md:text-7xl lg:text-8xl font-display font-bold text-[#9B5DE5] tracking-tighter mb-8 md:mb-16 drop-shadow-[0_0_30px_rgba(0,229,255,0.5)] leading-none">
               CONNECTION
             </h2>
 
             <div className="flex flex-wrap gap-6 justify-center">
               <a
                 href={`mailto:${contentData.social.email}`}
-                className="group relative overflow-hidden rounded-full border border-white/20 bg-black/40 backdrop-blur-xl px-10 py-5 transition-all hover:border-[#9B5DE5]/50 hover:shadow-[0_0_40px_rgba(0,229,255,0.2)]"
+                className="group relative overflow-hidden rounded-full border border-white/20 bg-black/40 backdrop-blur-xl px-6 py-4 md:px-10 md:py-5 transition-all hover:border-[#9B5DE5]/50 hover:shadow-[0_0_40px_rgba(0,229,255,0.2)]"
               >
                 <div className="absolute inset-0 bg-gradient-to-r from-[#9B5DE5]/0 via-[#9B5DE5]/10 to-[#9B5DE5]/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700 ease-in-out" />
-                <span className="text-sm tracking-[0.3em] uppercase text-white font-medium flex items-center gap-3 relative z-10"><Mail size={18} /> Email</span>
+                <span className="text-xs md:text-sm tracking-[0.2em] md:tracking-[0.3em] uppercase text-white font-medium flex items-center gap-2 md:gap-3 relative z-10"><Mail size={16} className="md:w-[18px] md:h-[18px]" /> Email</span>
               </a>
 
               <a
                 href={contentData.social.github}
                 target="_blank" rel="noreferrer"
-                className="group relative overflow-hidden rounded-full border border-white/20 bg-black/40 backdrop-blur-xl px-10 py-5 transition-all hover:border-[#F15BB5]/50 hover:shadow-[0_0_40px_rgba(255,42,0,0.2)]"
+                className="group relative overflow-hidden rounded-full border border-white/20 bg-black/40 backdrop-blur-xl px-6 py-4 md:px-10 md:py-5 transition-all hover:border-[#F15BB5]/50 hover:shadow-[0_0_40px_rgba(255,42,0,0.2)]"
               >
                 <div className="absolute inset-0 bg-gradient-to-r from-[#F15BB5]/0 via-[#F15BB5]/10 to-[#F15BB5]/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700 ease-in-out" />
-                <span className="text-sm tracking-[0.3em] uppercase text-white font-medium flex items-center gap-3 relative z-10"><Github size={18} /> GitHub</span>
+                <span className="text-xs md:text-sm tracking-[0.2em] md:tracking-[0.3em] uppercase text-white font-medium flex items-center gap-2 md:gap-3 relative z-10"><Github size={16} className="md:w-[18px] md:h-[18px]" /> GitHub</span>
               </a>
 
               <a
                 href={contentData.social.linkedin}
                 target="_blank" rel="noreferrer"
-                className="group relative overflow-hidden rounded-full border border-white/20 bg-black/40 backdrop-blur-xl px-10 py-5 transition-all hover:border-[#9B5DE5]/50 hover:shadow-[0_0_40px_rgba(0,229,255,0.2)]"
+                className="group relative overflow-hidden rounded-full border border-white/20 bg-black/40 backdrop-blur-xl px-6 py-4 md:px-10 md:py-5 transition-all hover:border-[#9B5DE5]/50 hover:shadow-[0_0_40px_rgba(0,229,255,0.2)]"
               >
                 <div className="absolute inset-0 bg-gradient-to-r from-[#9B5DE5]/0 via-[#9B5DE5]/10 to-[#9B5DE5]/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700 ease-in-out" />
-                <span className="text-sm tracking-[0.3em] uppercase text-white font-medium flex items-center gap-3 relative z-10"><Linkedin size={18} /> LinkedIn</span>
+                <span className="text-xs md:text-sm tracking-[0.2em] md:tracking-[0.3em] uppercase text-white font-medium flex items-center gap-2 md:gap-3 relative z-10"><Linkedin size={16} className="md:w-[18px] md:h-[18px]" /> LinkedIn</span>
               </a>
 
               <a
                 href={`mailto:${contentData.social.email}?subject=Requesting%20Resume`}
-                className="group relative overflow-hidden rounded-full border border-white/20 bg-[#9B5DE5]/10 backdrop-blur-xl px-10 py-5 transition-all hover:bg-[#9B5DE5]/20 hover:border-[#9B5DE5] hover:shadow-[0_0_40px_rgba(0,229,255,0.4)]"
+                className="group relative overflow-hidden rounded-full border border-white/20 bg-[#9B5DE5]/10 backdrop-blur-xl px-6 py-4 md:px-10 md:py-5 transition-all hover:bg-[#9B5DE5]/20 hover:border-[#9B5DE5] hover:shadow-[0_0_40px_rgba(0,229,255,0.4)]"
               >
-                <span className="text-sm tracking-[0.3em] uppercase text-[#9B5DE5] font-bold flex items-center gap-3 relative z-10"><FileText size={18} /> Request Resume</span>
+                <span className="text-xs md:text-sm tracking-[0.2em] md:tracking-[0.3em] uppercase text-[#9B5DE5] font-bold flex items-center gap-2 md:gap-3 relative z-10"><FileText size={16} className="md:w-[18px] md:h-[18px]" /> Request Resume</span>
               </a>
             </div>
           </div>
@@ -1185,11 +1187,11 @@ export default function Experience() {
           style={{ background: 'radial-gradient(circle at center, rgba(3,3,5,0.7) 0%, rgba(3,3,5,0.98) 100%)' }}
         />
 
-        <div className={`relative w-full h-full max-w-[1400px] mx-auto px-8 md:px-16 flex flex-col md:flex-row items-center justify-between gap-12 transition-all cubic-bezier(0.16, 1, 0.3, 1) ${activeProject ? 'duration-[1200ms] delay-[800ms] pointer-events-auto scale-100 opacity-100 translate-y-0' : 'duration-[400ms] delay-0 pointer-events-none scale-[0.97] opacity-0 translate-y-8'}`}>
+        <div className={`relative w-full h-full max-w-[1400px] mx-auto px-6 md:px-16 py-20 md:py-0 flex flex-col md:flex-row items-center justify-start md:justify-between gap-6 md:gap-12 transition-all cubic-bezier(0.16, 1, 0.3, 1) overflow-y-auto md:overflow-visible ${activeProject ? 'duration-[1200ms] delay-[800ms] pointer-events-auto scale-100 opacity-100 translate-y-0' : 'duration-[400ms] delay-0 pointer-events-none scale-[0.97] opacity-0 translate-y-8'}`}>
 
           {/* Left Side: Details & Close */}
-          <div className="w-full md:w-[35%] flex flex-col items-start text-left z-10 shrink-0">
-            <h2 className="text-5xl md:text-6xl font-light text-white mb-3 tracking-tight">
+          <div className="w-full md:w-[35%] flex flex-col items-start text-left z-10 shrink-0 mt-8 md:mt-0">
+            <h2 className="text-4xl md:text-6xl font-light text-white mb-2 md:mb-3 tracking-tight">
               {selectedProjData?.title}
             </h2>
             <p className="text-xs text-[#9B5DE5] uppercase tracking-[0.2em] font-medium mb-8">
@@ -1238,7 +1240,7 @@ export default function Experience() {
           </div>
 
           {/* Right Side: Massive Display Monitor */}
-          <div className="flex-1 w-full h-[50vh] md:h-[75vh] bg-[#020203] border border-white/5 rounded-2xl md:rounded-[2rem] shadow-[0_0_100px_rgba(0,0,0,0.8)] flex items-center justify-center overflow-hidden relative group">
+          <div className="flex-1 w-full h-[35vh] sm:h-[45vh] md:h-[75vh] min-h-[250px] bg-[#020203] border border-white/5 rounded-2xl md:rounded-[2rem] shadow-[0_0_100px_rgba(0,0,0,0.8)] flex items-center justify-center overflow-hidden relative group shrink-0">
             {/* Internal monitor glow */}
             <div className="absolute inset-0 bg-gradient-to-tr from-[#9B5DE5]/[0.02] to-transparent pointer-events-none" />
 
