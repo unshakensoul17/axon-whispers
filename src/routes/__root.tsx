@@ -75,9 +75,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
 
       // ── Primary SEO ──────────────────────────────────────────────────
-      { title: "Akash Yaduwanshi | AI Engineer & ML Researcher" },
-      { name: "description", content: "Portfolio of Akash Yaduwanshi — AI Engineer specializing in LLMs, multi-agent systems, autonomous AI pipelines, and intelligent developer tooling. Based in India." },
-      { name: "keywords", content: "Akash Yaduwanshi, AI Engineer, Machine Learning Engineer, LLM Engineer, Multi-Agent Systems, Python Developer, Portfolio, AI Researcher, TanStack, React, Three.js" },
+      { title: "Akash Yaduwanshi | AI Engineer Portfolio | Machine Learning in Indore" },
+      { name: "description", content: "Explore the portfolio of Akash Yaduwanshi, an AI Engineer and ML Researcher based in Indore. Specializing in LLMs, machine learning, multi-agent systems, and autonomous AI pipelines." },
+      { name: "keywords", content: "Akash Yaduwanshi, AI Engineer Portfolio, Akash Yaduwanshi Portfolio, Portfolio in Indore, AI Engineer in Indore, ML Engineer in Indore, Machine Learning in Indore, LLM Engineer, Multi-Agent Systems, AI Researcher, Tech Portfolio" },
       { name: "author", content: "Akash Yaduwanshi" },
       { name: "robots", content: "index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" },
       { name: "language", content: "English" },
@@ -90,8 +90,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       // ── Open Graph (LinkedIn, Facebook, WhatsApp previews) ───────────
       { property: "og:type", content: "website" },
       { property: "og:url", content: "https://akashyaduwanshiportfolio.vercel.app/" },
-      { property: "og:title", content: "Akash Yaduwanshi | AI Engineer & ML Researcher" },
-      { property: "og:description", content: "Cinematic 3D portfolio of Akash Yaduwanshi — AI Engineer building autonomous pipelines, LLM systems, and intelligent developer tooling." },
+      { property: "og:title", content: "Akash Yaduwanshi | AI Engineer Portfolio | Machine Learning in Indore" },
+      { property: "og:description", content: "Explore the portfolio of Akash Yaduwanshi, an AI Engineer and ML Researcher based in Indore. Specializing in LLMs, machine learning, multi-agent systems, and autonomous AI pipelines." },
       { property: "og:image", content: "https://akashyaduwanshiportfolio.vercel.app/assets/phantmos_ui.png" },
       { property: "og:image:width", content: "1200" },
       { property: "og:image:height", content: "630" },
@@ -103,8 +103,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:site", content: "@unshakensoul17" },
       { name: "twitter:creator", content: "@unshakensoul17" },
-      { name: "twitter:title", content: "Akash Yaduwanshi | AI Engineer & ML Researcher" },
-      { name: "twitter:description", content: "Cinematic 3D portfolio — AI Engineer building autonomous pipelines, LLM systems, and intelligent developer tools." },
+      { name: "twitter:title", content: "Akash Yaduwanshi | AI Engineer Portfolio | Machine Learning in Indore" },
+      { name: "twitter:description", content: "Explore the portfolio of Akash Yaduwanshi, an AI Engineer and ML Researcher based in Indore. Specializing in LLMs, machine learning, multi-agent systems, and autonomous AI pipelines." },
       { name: "twitter:image", content: "https://akashyaduwanshiportfolio.vercel.app/assets/phantmos_ui.png" },
       { name: "twitter:image:alt", content: "Akash Yaduwanshi Portfolio" },
 
@@ -132,7 +132,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
             "React",
             "TypeScript",
             "Three.js"
-          ]
+          ],
+          "address": {
+            "@type": "PostalAddress",
+            "addressLocality": "Indore",
+            "addressRegion": "Madhya Pradesh",
+            "addressCountry": "IN"
+          }
         })
       },
     ],
