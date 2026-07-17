@@ -110,7 +110,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
       // ── JSON-LD Structured Data (Person schema) ──────────────────────
       {
-        "script:ld+json": JSON.stringify({
+        "script:ld+json": {
           "@context": "https://schema.org",
           "@type": "Person",
           "name": "Akash Yaduwanshi",
@@ -139,7 +139,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
             "addressRegion": "Madhya Pradesh",
             "addressCountry": "IN"
           }
-        })
+        }
       },
     ],
     links: [
